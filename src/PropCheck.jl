@@ -70,6 +70,7 @@ end
 
 generate(::Type{T}) where {T <: Number} = rand(T)
 generate(::Type{T}) where {T} = error("No `generate` defined for $T")
+generate(::Type{T}, n) where {T} = T[ generate(T) for _ in 1:n ]
 
 specials(::Type{T}) where {T <: Signed} = T[0, 1, -1, typemax(T), typemin(T)]
 specials(::Type{BigInt}) = BigInt[0,1,-1]
