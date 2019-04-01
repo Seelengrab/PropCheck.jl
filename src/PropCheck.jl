@@ -72,10 +72,10 @@ generate(::Type{T}) where {T <: Number} = rand(T)
 generate(::Type{T}) where {T} = error("No `generate` defined for $T")
 generate(::Type{T}, n) where {T} = T[ generate(T) for _ in 1:n ]
 
-specials(::Type{T}) where {T <: Signed} = T[0, 1, -1, typemax(T), typemin(T)]
-specials(::Type{BigInt}) = BigInt[0,1,-1]
-specials(::Type{T}) where {T <: Unsigned} = T[0, 1, typemax(T)]
-specials(::Type{T}) where {T <: AbstractFloat} = T[0., 1., typemax(T), typemin(T), NaN]
+specials(::Type{T}) where {T <: Signed} = T[zero(T), one(T), -one(T), typemax(T), typemin(T)]
+specials(::Type{BigInt}) = BigInt[zero(BigInt),one(BigInt),-one(BigInt)]
+specials(::Type{T}) where {T <: Unsigned} = T[zero(T), one(T), typemax(T)]
+specials(::Type{T}) where {T <: AbstractFloat} = T[zero(T), one(T), typemax(T), typemin(T), zero(T) / zero(T)]
 specials(::Type{T}) where {T} = T[generate(T)]
 
 end # module
