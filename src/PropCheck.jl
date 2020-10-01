@@ -119,7 +119,7 @@ end
     @check customProperty
     @check customProperty()
 
-Evaluates the given property and tests whether or not it holds. The given function should not take any arguments.
+Evaluates the given property and tests whether or not it holds. The given function should not take any arguments. Expects the function to return (boolean, _).
 """
 macro check(func)
     f = func.head == :call ? f : :(f())
