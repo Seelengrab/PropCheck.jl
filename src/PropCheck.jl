@@ -271,22 +271,44 @@ Fallback shrinking function for structs. Tries to shrink each field of the given
 shrink(a::T) where T = T([ shrink(getfield(a,f)) for f in 1:fieldcount(T) ]...) # fallback for structs
 
 """
-    shrink(n::T) where { T <: Number}
+    shrink(n::T) where { T <: Integer }
 
-Shrinks numbers toward zero.
+Shrinks positive integers toward zero and negative integers towards -1.
 """
-shrink(up::T) where {T <: Number} = begin
+shrink(up::T) where {T <: Integer} = begin
     iszero(up) && return up
     # this assumes isbits!
-    pow2s = UInt[]
-    for i in 0:(sizeof(T)*8)
-        n = UInt(1) << i
-        if (up & n) != 0
+
+    targetSize = sizeof(T)*8
+    if targetSize == 64         workType = UInt64
+    elseif targetSize == 32     workType = UInt32
+    elseif targetSize == 16     workType = UInt16
+    elseif targetSize == 8      workType = UInt8
+    end
+
+    ret = reinterpret(workType, up)
+    pow2s = workType[]
+    for i in workType(0):targetSize-1
+        n = workType(1) << i
+        if (up & n) != workType(0)
             push!(pow2s, n)
         end
     end
-    up & T(~rand(pow2s))
+
+    if up < 0
+        ret | rand(pow2s)
+    else
+        ret & ~rand(pow2s)
+    end
+    reinterpret(T, ret)
 end
+
+"""
+    shrink(n::T) where { T <: AbstractFloat }
+
+Shrinks positive floats toward zero and negative floats towards -1.
+"""
+shrink(up::T) where {T <: AbstractFloat} = up / 2
 
 """
     shrink(arr::T) where {V, N, T <: AbstractArray{V,N}}
