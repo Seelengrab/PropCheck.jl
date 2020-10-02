@@ -89,8 +89,11 @@ Errors occuring during testing are considered a failure and are printed together
 
 ## ToDo
 
+These are written down here instead of in issues because they're very generic goals and usually don't directly have an actionable task associated with them.
+
 In no particular order:
 
  * Clean up the printing of test cases (custom testset?)
  * Define more generators for types from Base, e.g. `Char` and `String`
+ * Improve shrinking for types which already have a generator defined
  * Make it possible to `generate(Union{Int,Float64})`
