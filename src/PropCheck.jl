@@ -122,12 +122,12 @@ end
 Evaluates the given property and tests whether or not it holds. The given function should not take any arguments. Expects the function to return (boolean, _).
 """
 macro check(func)
-    f = func.head == :call ? f : :(f())
-
+    f = func isa Expr && func.head == :call ? func : :($func())
+    
     esc(quote
-    local f = "$($func)"
+    local f_name = "$($func)"
     @testset "$($func)" begin
-            print(f, ": ")
+            print(f_name, ": ")
             local res, _ = $f
             @test res
         end
