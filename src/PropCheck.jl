@@ -134,13 +134,29 @@ macro check(func)
     end)
 end
 
+getSubtypes() = begin
+    subs = subtypes(Any)
+    ret = filter(isconcretetype, subs)
+    filter!(isabstracttype, subs)
+
+    while !isempty(subs)
+        ntype = popfirst!(subs)
+        ntype == Any && continue
+        nsubs = subtypes(ntype)
+        append!(ret, Iterators.filter(isconcretetype, nsubs))
+        append!(subs, Iterators.filter(isabstracttype, nsubs))
+    end
+
+    ret
+end
+
 struct empty end
 # This kills inference and might result in endless recursion, so be careful with ::Any field type
 generate(::Type{Any}) = begin
     x = empty()
     while x === empty()
         x = try
-            generate(rand(filter(isconcretetype, subtypes(Any))))
+            generate(rand(getSubtypes()))
         catch ex
             # ignore
             empty()
