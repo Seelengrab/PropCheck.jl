@@ -26,16 +26,19 @@ Probability of dropping an element of an arraylike during shrinking.
 const dropChance = Ref(0.5)
 
 """
+    @suchthat(bin, generator, condition[, tries])
     @suchthat(N, generate(Int), x -> ...)
     @suchthat(N, () -> generate(Int), ==(N))
-    @suchthat((N,M), (generate(Int),generate(Int)), !=)
+    @suchthat((N,M), (generate(Int),generate(Int)), !=, 500)
 
 Tries to generate elements via the given generator(s) until the condition is satisfied. The condition has to return a boolean.
+Returns the element that's satisfying the condition or throws an error if after `tries` no satisfying element could be generated.
 """
 macro suchthat(bin, gen, cond, tries=nGenTries[])
     condArgs = cond.args[1] isa Symbol ? bin : :($bin...)
     generator = gen isa Symbol || (gen isa Expr && gen.head == :->) ? :($gen()) :
-                (gen isa Expr && (gen.head == :call || gen.head == :tuple)) ? gen : :(() -> error("The given generator does not look like a callable or a function call."))
+                (gen isa Expr && (gen.head == :call || gen.head == :tuple)) ? gen :
+                :(() -> error("The given generator does not look like a callable or a function call."))
 
     return esc(quote
         $bin = $generator
@@ -56,7 +59,9 @@ Generates values from the given generators and applies the expression `expr` on 
 """
 macro set(bin, gen, expr)
     # TODO: Find out if this macro is really necessary, seems like a trivial transform?
-    generator = gen isa Symbol || (gen isa Expr && gen.head == :->) ? :($gen()) : gen isa Expr && gen.head == :call ? gen : :(() -> error("The given generator does not look like a callable or a function call."))
+    generator = gen isa Symbol || (gen isa Expr && gen.head == :->) ? :($gen()) :
+                gen isa Expr && gen.head == :call ? gen :
+                :(() -> error("The given generator does not look like a callable or a function call."))
 
     esc(quote
         $bin = $generator
@@ -75,63 +80,104 @@ Generates testcases from the given generator `gen` and checks whether the proper
 Returns either `(true, nothing)` or `(false, <case>)`.
 """
 macro forall(gen, prop, nTests=nTests[])
-    condGen = gen isa Symbol || (gen isa Expr && gen.head == :->) ? :($gen()) :
-             (gen isa Expr && (gen.head == :call || gen.head == :tuple) ? gen : error("The given generator does not look like a generator."))
+    local condGen = gen isa Symbol || (gen isa Expr && gen.head == :->) ? :($gen()) :
+             (gen isa Expr && (gen.head == :call || gen.head == :tuple) ? gen :
+             :(() -> error("The given generator does not look like a generator.")))
 
     if !(prop isa Expr && (prop.head == :-> || prop.head == :call))
-        error("Can't infer number of arguments for function.")
+        throw(ArgumentError("Can't infer number of arguments for function."))
     end
 
     if prop.head == :call
-        singleArg = length(prop.args) == 2
+        local singleArg = length(prop.args) == 2
         prop = prop.head == :call ? prop.args[1] : prop
     elseif prop.head == :->
         singleArg = prop.args[1] isa Symbol
     end
-    condCase = singleArg ? :case : :(case...)
+    local condCase = singleArg ? :case : :(case...)
     
     return esc(quote
+        ret = (true, nothing)
         for i in 1:$nTests
             case = $condGen
             try 
                 if !$prop($condCase)
-                    println("\n\tFailed after $i test", i != 1 ? "s." : ".")
+                    println("\tFailed after $i test", i != 1 ? "s." : ".")
                     print("\tShrinking... ")
                     s = shrink($prop, case, $singleArg)
                     case = s.case
                     shrinks = s.generation
                     println("(", shrinks, " time", shrinks != 1 ? "s)" : ")")
                     println('\t', case, '\n')
-                    return false, case
+                    ret = (false, case)
+                    flush(stdout)
+                    break
                 end
             catch ex
                 println("\tGot exception:")
                 println('\t', ex)
-                return false, case                
+                ret = (false, case)
+                break
             end
         end
-        println("✓")
-        return true, nothing
+        ret
     end)
 end
 
 """
     @check customProperty
-    @check customProperty()
+    @check customProperty([A...])
 
-Evaluates the given property and tests whether or not it holds. The given function should not take any arguments. Expects the function to return (boolean, _).
+Evaluates the given property and tests whether or not it holds. Expects the function to return (boolean, _).
+
+Make sure the arguments to the property are either constants or you don't mind resolving/evaluating them before calling the property. This behaviour can be turned off by setting `pretty=false`, at the cost of no longer seeing the values of arguments in the resulting names of the testset.
 """
-macro check(func)
-    f = func isa Expr && func.head == :call ? func : :($func())
-    
-    esc(quote
-    local f_name = "$($func)"
-    @testset "$($func)" begin
-            print(f_name, ": ")
-            local res, _ = $f
-            @test res
+macro check(ex)
+    if ex isa Expr
+        if ex.head == :call
+            f = ex
+        elseif ex.head != :for
+            f = :($ex())
+        else # for loop expanded to a testset of multiple testsets, each running over their own loop
+            f = ex.args[2]
+            body = Expr(:block)
+            for inner_ex in f.args
+                nLoop = copy(ex)
+                if !(inner_ex isa Expr) || inner_ex.head != :call
+                    push!(body.args, inner_ex)
+                    continue
+                end
+                # we have to escape the function call, but _not_ its arguments
+                new_ex = Expr(:call, Expr(:escape, inner_ex.args[1]), inner_ex.args[2:end]...)
+                nLoop.args[2] = :(begin
+                    res, _ = $new_ex
+                    @test res
+                end)
+                set_name = Expr(:string, Expr(:escape, inner_ex.args[1]), '(')
+                for e in inner_ex.args[2:end]
+                    push!(set_name.args, e)
+                    e !== last(inner_ex.args) && push!(set_name.args, ", ")
+                end
+                push!(set_name.args, ')')
+
+                func_name = Expr(:string, Expr(:escape, inner_ex.args[1]))
+                push!(body.args, :(@testset $func_name begin @testset $set_name $nLoop end))
+            end
+            name = "LoopCheck"
         end
-    end)
+    end
+
+    if ex.head != :for # build body and name of outer testset if its not a loop
+        body = :(begin
+            res, _ = $(esc(f))
+            @test res
+        end)
+        name = Expr(:string, Expr(:escape, f.args[1]), '(', map(x -> Expr(:escape, x), f.args[2:end])..., ')')
+    end
+
+    quote
+        @testset $name $body
+    end
 end
 
 getSubtypes() = begin
@@ -188,7 +234,7 @@ generate(::Type{T}) where {T <: Number} = rand(T) # numbers
 
 Generates arrays by choosing a random number of dimensions and filling the resulting array by repeatedly calling `generate(V)`.
 """
-generate(::Type{T}) where {V, N, T <: AbstractArray{V,N}} = begin
+generate(::Type{T}) where {V,N,T <: AbstractArray{V,N}} = begin
     res = T(undef, rand(UInt8, N)...)
     for i in eachindex(res)
         res[i] = generate(V)
@@ -196,7 +242,7 @@ generate(::Type{T}) where {V, N, T <: AbstractArray{V,N}} = begin
     res
 end
 
-generate(::Type{NTuple{N,T}}) where {N, T} = begin
+generate(::Type{NTuple{N,T}}) where {N,T} = begin
     data = collect(generate(T) for _ in 1:N)
     ntuple(x -> data[x], N)
 end
@@ -207,7 +253,7 @@ struct Shrinker{T}
 end
 Shrinker(case) = Shrinker{typeof(case)}(case, UInt(0))
 
-Base.isless(a::T, b::T) where {S, T <: Shrinker{S}} = shrinkless(a.case,b.case)
+Base.isless(a::T, b::T) where {S,T <: Shrinker{S}} = shrinkless(a.case, b.case)
 shrinkless(a::T, b::T) where T <: Number = a < b
 shrinkless(a::T, b::T) where T <: Tuple = length(a) == length(b) ? reduce(&, map(shrinkless, a, b)) : length(a) < length(b)
 shrinkless(a::T, b::T) where T = begin
@@ -217,7 +263,7 @@ shrinkless(a::T, b::T) where T = begin
         if ex isa MethodError
             less = true
             for f in 1:fieldcount(T)
-                less &= shrinkless(getfield(a,f), getfield(b,f))
+                less &= shrinkless(getfield(a, f), getfield(b, f))
             end
             return less
         else
@@ -225,7 +271,7 @@ shrinkless(a::T, b::T) where T = begin
         end
     end
 end
-shrinkless(a::T, b::T) where {S, N, T <: AbstractArray{S,N}} = begin
+shrinkless(a::T, b::T) where {S,N,T <: AbstractArray{S,N}} = begin
     return length(a) == length(b) ? reduce(&, map(shrinkless, a, b)) : length(a) < length(b)
 end
 
@@ -234,7 +280,7 @@ shrink(f, case, singleArg, nShrinks=nShrinks[]) = begin
     popSize = 100
     bestCounterexample = Shrinker(case)
     
-    population   = [ bestCounterexample for _ in 1:3*popSize ]
+    population   = [ bestCounterexample for _ in 1:3 * popSize ]
     
     while tests < nShrinks
         population .= shrink.(population)
@@ -250,17 +296,17 @@ shrink(f, case, singleArg, nShrinks=nShrinks[]) = begin
         else
             bestN = partialsort!(survivors, 1:min(10, length(survivors)))
             bestCounterexample = first(bestN)
-            population .= rand(bestN, 3*popSize)
+            population .= rand(bestN, 3 * popSize)
         end
         tests += 1
     end
     bestCounterexample
 end
 
-shrink(s::T) where {S, T <: Shrinker{S}} = T(shrink(s.case), s.generation+1)
-shrink(s::T) where {S <: Tuple, T <: Shrinker{S}} = begin
+shrink(s::T) where {S,T <: Shrinker{S}} = T(shrink(s.case), s.generation + 1)
+shrink(s::T) where {S <: Tuple,T <: Shrinker{S}} = begin
     ncase = shrink(s.case)
-    Shrinker{typeof(ncase)}(ncase, s.generation+1)
+    Shrinker{typeof(ncase)}(ncase, s.generation + 1)
 end
 
 """
@@ -268,7 +314,7 @@ end
 
 Fallback shrinking function for structs. Tries to shrink each field of the given type and calls the default constructor. If you wrote a custom [`generate`](@ref), you probably also have to customize this.
 """
-shrink(a::T) where T = T([ shrink(getfield(a,f)) for f in 1:fieldcount(T) ]...) # fallback for structs
+shrink(a::T) where T = T([ shrink(getfield(a, f)) for f in 1:fieldcount(T) ]...) # fallback for structs
 
 """
     shrink(n::T) where { T <: Integer }
@@ -277,10 +323,12 @@ Shrinks positive integers toward zero and negative integers towards -1.
 """
 shrink(up::T) where {T <: Integer} = begin
     iszero(up) && return up
-    # this assumes isbits!
+    
+    # this assumes isbits and is too smart by half
 
-    targetSize = sizeof(T)*8
-    if targetSize == 64         workType = UInt64
+    targetSize = sizeof(T) * 8
+    if targetSize == 128        workType = UInt128
+    elseif targetSize == 64     workType = UInt64
     elseif targetSize == 32     workType = UInt32
     elseif targetSize == 16     workType = UInt16
     elseif targetSize == 8      workType = UInt8
@@ -288,7 +336,7 @@ shrink(up::T) where {T <: Integer} = begin
 
     ret = reinterpret(workType, up)
     pow2s = workType[]
-    for i in workType(0):targetSize-1
+    for i in workType(0):targetSize - 1
         n = workType(1) << i
         if (up & n) != workType(0)
             push!(pow2s, n)
@@ -315,7 +363,7 @@ shrink(up::T) where {T <: AbstractFloat} = up / 2
 
 Shrinks arrays by shrinking their elements as well as dropping random elements with probability [`PropCheck.dropChance`](@ref).
 """
-shrink(arr::T) where {V, N, T <: AbstractArray{V,N}} = begin
+shrink(arr::T) where {V,N,T <: AbstractArray{V,N}} = begin
     length(arr) == 0 && return ret
     
     # shrink array by shrinking elements and maybe dropping a random element
