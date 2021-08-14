@@ -74,6 +74,7 @@ end
     @forall((generate(Int), generate(Int)), x -> (x == x), nTests=PropCheck.nTests[])
     @forall((generate(Int), generate(Int)), (x,y) -> (x != y), nTests=PropCheck.nTests[])
     @forall((generate(Int), generate(Int)), !=(x,y), nTests=PropCheck.nTests[])
+    @forall(gen, prop[, nTests])
 
 Generates testcases from the given generator `gen` and checks whether the property `prop` holds. Tries a maximum of `nTests` different testcases. If a failing testcase is found, i.e. `prop(case...)` returns `false` for some `case`, the case is shrunk to a minimal reproducible example. The number of arguments is tried to be inferred from the given property. 
 
@@ -100,23 +101,24 @@ macro forall(gen, prop, nTests=nTests[])
         ret = (true, nothing)
         for i in 1:$nTests
             case = $condGen
-            try 
-                if !$prop($condCase)
-                    println("\tFailed after $i test", i != 1 ? "s." : ".")
-                    print("\tShrinking... ")
-                    s = shrink($prop, case, $singleArg)
-                    case = s.case
-                    shrinks = s.generation
-                    println("(", shrinks, " time", shrinks != 1 ? "s)" : ")")
-                    println('\t', case, '\n')
-                    ret = (false, case)
-                    flush(stdout)
-                    break
-                end
+            res = try 
+                $prop($condCase)
             catch ex
-                println("\tGot exception:")
-                println('\t', ex)
+                println("\n\tGot exception, not shrinking:")
+                Base.display_error(ex)
                 ret = (false, case)
+                break
+            end
+            if !res
+                println("\tFailed after ", i, " test", i != 1 ? "s." : ".")
+                print("\tShrinking... (", case, ')')
+                s = shrink($prop, case, $singleArg)
+                case = s.case
+                shrinks = s.generation
+                println("(", shrinks, " time", shrinks != 1 ? "s)" : ")")
+                println('\t', case, '\n')
+                ret = (false, case)
+                flush(stdout)
                 break
             end
         end
@@ -125,14 +127,15 @@ macro forall(gen, prop, nTests=nTests[])
 end
 
 """
-    @check customProperty
+    @check customProperty 
     @check customProperty([A...])
+    @check prop pretty=true
 
-Evaluates the given property and tests whether or not it holds. Expects the function to return (boolean, _).
+Evaluates the given property and tests whether or not it holds. Expects the function to return `(boolean, _)`.
 
 Make sure the arguments to the property are either constants or you don't mind resolving/evaluating them before calling the property. This behaviour can be turned off by setting `pretty=false`, at the cost of no longer seeing the values of arguments in the resulting names of the testset.
 """
-macro check(ex)
+macro check(ex, pretty=true, broken=false)
     if ex isa Expr
         if ex.head == :call
             f = ex
@@ -167,10 +170,14 @@ macro check(ex)
         end
     end
 
-    if ex.head != :for # build body and name of outer testset if its not a loop
+    if ex isa Symbol
+        f = :($ex())
+    end
+    
+    if ex isa Symbol || ex.head != :for # build body and name of outer testset if its not a loop
         body = :(begin
             res, _ = $(esc(f))
-            @test res
+            @test res broken=$broken
         end)
         name = Expr(:string, Expr(:escape, f.args[1]), '(', map(x -> Expr(:escape, x), f.args[2:end])..., ')')
     end
@@ -247,13 +254,55 @@ generate(::Type{NTuple{N,T}}) where {N,T} = begin
     ntuple(x -> data[x], N)
 end
 
-struct Shrinker{T}
-    case::T
-    generation::UInt
-end
-Shrinker(case) = Shrinker{typeof(case)}(case, UInt(0))
+abstract type Shrinker end
 
-Base.isless(a::T, b::T) where {S,T <: Shrinker{S}} = shrinkless(a.case, b.case)
+struct SimpleShrinker{T} <: Shrinker
+    generation::UInt
+    exhausted::Bool
+    case::T
+end
+
+struct BinaryShrinker{T} <: Shrinker
+    generation::UInt
+    exhausted::Bool
+    case::T
+
+    # new additions compared to the base implementation
+    original_case::T
+    saved_bound::T
+    top::T
+    bottom::T
+end
+
+Shrinker(case) = SimpleShrinker{typeof(case)}(UInt(0), false, case)
+
+# this method is very casey
+Shrinker(case::T) where T <: Integer = BinaryShrinker{T}(UInt(0), false, case, case, case, case, case+one(T)) # this assumes wraparound/modular arithmetic
+
+exhaust(a) = exhaust(a...)
+exhaust(falsifies, s::T) where {T <: SimpleShrinker} = SimpleShrinker{typeof(s.case)}(s.generation, falsifies, s.case)
+exhaust(falsifies, s::T) where {S <: Integer, T <: BinaryShrinker{S}} = begin
+    return T(
+        s.generation,
+        s.top == s.bottom,
+        s.case,
+        s.original_case,
+        (
+            if falsifies 
+                (s.top,
+                s.case,
+                s.bottom)
+            else
+                (s.bottom,
+                s.saved_bound,
+                s.case)
+            end
+        )...
+    )
+end
+
+Base.isless(a::T, b::T) where {S, T <: BinaryShrinker{S}} = (a.case, a.top-a.bottom, a.original_case, b.generation) < (b.case, b.top-b.bottom, b.original_case, b.generation)
+Base.isless(a::T, b::T) where {T <: Shrinker} = shrinkless(a.case, b.case)
 shrinkless(a::T, b::T) where T <: Number = a < b
 shrinkless(a::T, b::T) where T <: Tuple = length(a) == length(b) ? reduce(&, map(shrinkless, a, b)) : length(a) < length(b)
 shrinkless(a::T, b::T) where T = begin
@@ -278,35 +327,49 @@ end
 shrink(f, case, singleArg, nShrinks=nShrinks[]) = begin
     tests = 0
     popSize = 100
+    
+    # TODO: write better initialization depending on the case type
     bestCounterexample = Shrinker(case)
-    
-    population   = [ bestCounterexample for _ in 1:3 * popSize ]
-    
+    population   = [ bestCounterexample for _ in 1:popSize ]
+
+    # TODO: outsource this into a recursive function
+    # possible things: branch and bound, minimax...
+    # should be possible to define a domination criterion
     while tests < nShrinks
         population .= shrink.(population)
         
         survivors = if singleArg 
-            filter(x -> !f(x.case), population)
+            map(x -> !f(x.case), population)
         else
-            filter(x -> !f(x.case...), population)
+            map(x -> !f(x.case...), population)
         end
         
-        if isempty(survivors)
-            fill!(population, bestCounterexample)
-        else
-            bestN = partialsort!(survivors, 1:min(10, length(survivors)))
+        if any(survivors)
+            remainingShrinkers = filter(x -> x.exhausted, Iterators.map(exhaust, Iterators.zip(survivors, population)))
+            bestN = partialsort!(remainingShrinkers, 1:min(10, length(remainingShrinkers)))
             bestCounterexample = first(bestN)
-            population .= rand(bestN, 3 * popSize)
+            population .= rand(bestN, popSize)
+        else # no survivors :(
+            fill!(population, bestCounterexample)
         end
         tests += 1
     end
     bestCounterexample
 end
 
-shrink(s::T) where {S,T <: Shrinker{S}} = T(shrink(s.case), s.generation + 1)
-shrink(s::T) where {S <: Tuple,T <: Shrinker{S}} = begin
+shrink(s::T) where {S, T <: SimpleShrinker{S}} = T(s.generation + 1, false, shrink(s.case))
+shrink(s::T) where {S, T <: BinaryShrinker{S}} = begin
+    return T(s.generation,
+             s.exhausted,
+             (s.bottom-s.top)÷2,
+             s.original_case,
+             s.saved_bound,
+             s.top,
+             s.bottom)
+end
+shrink(s::T) where {S <: Tuple,T <: SimpleShrinker{S}} = begin
     ncase = shrink(s.case)
-    Shrinker{typeof(ncase)}(ncase, s.generation + 1)
+    SimpleShrinker{typeof(ncase)}(s.generation + 1, false, ncase)
 end
 
 """
@@ -324,7 +387,8 @@ Shrinks positive integers toward zero and negative integers towards -1.
 shrink(up::T) where {T <: Integer} = begin
     iszero(up) && return up
     
-    # this assumes isbits and is too smart by half
+    # this assumes isbits and is too smart by half 
+    # Ref. https://www.epsilontheory.com/too-clever-by-half/
 
     targetSize = sizeof(T) * 8
     if targetSize == 128        workType = UInt128
@@ -336,14 +400,14 @@ shrink(up::T) where {T <: Integer} = begin
 
     ret = reinterpret(workType, up)
     pow2s = workType[]
-    for i in workType(0):targetSize - 1
-        n = workType(1) << i
-        if (up & n) != workType(0)
+    for i in zero(workType):workType(targetSize)-one(workType)
+        n = one(workType) << i
+        if (up & n) != zero(workType)
             push!(pow2s, n)
         end
     end
 
-    if up < 0
+    if up < zero(T)
         ret | rand(pow2s)
     else
         ret & ~rand(pow2s)
@@ -364,10 +428,10 @@ shrink(up::T) where {T <: AbstractFloat} = up / 2
 Shrinks arrays by shrinking their elements as well as dropping random elements with probability [`PropCheck.dropChance`](@ref).
 """
 shrink(arr::T) where {V,N,T <: AbstractArray{V,N}} = begin
-    length(arr) == 0 && return ret
-    
     # shrink array by shrinking elements and maybe dropping a random element
     ret = copy(arr)
+    
+    length(arr) == 0 && return ret
     if rand() < dropChance[]
         deleteat!(ret, rand(eachindex(ret)))
     end

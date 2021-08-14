@@ -1,25 +1,50 @@
 using Test
 using PropCheck
 
+"""
+Tests the fallback shrinking for numbers to shrink towards zero.
+"""
 function numsToZero(T)
     @forall(generate(T), x -> begin
-        x < 0 ? shrink(x) < 0 : shrink(x) >= 0
+        if x == zero(T)
+            shrink(x) == zero(T)
+        elseif x < zero(T)
+            x < shrink(x) <= zero(T)
+        else
+            x > shrink(x) >= zero(T)
+        end
     end)
 end
 
 function numsNotSkipping(T)
     target = generate(T)
-    failed, res = @forall(generate(T), x -> x != target)
-    if !failed
-        target == res, nothing
+    _, res = @forall(generate(T), x -> x != target)
+    if target == res
+        true, nothing
     else
-        false, res
+        false, (target,res)
     end
 end
 
+function arraysToEmpty()
+    @forall(generate(T), x -> begin
+        shrunk = shrink(x)
+        if isempty(x)
+            length(x) == length(shrunk) == 0
+        else
+            length(x) > length(shrunk)
+        end
+    end)
+end
+
 @testset "All Tests" begin
-    @testset "Shrinking" for T in (UInt64, UInt32, UInt16, UInt8, Float64, Float32, Float16)
-        @check numsToZero(T)
-        @check numsNotSkipping(T)
+    @testset "Macro expansions" begin
+        # TODO: write tests for the expansion
+    end
+    @testset "Shrinking Numbers" begin
+        @check for T in union(subtypes(Unsigned), subtypes(AbstractFloat), (Float64, Float32, Float16))
+            numsToZero(T)
+            numsNotSkipping(T)
+        end
     end
 end
