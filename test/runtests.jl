@@ -1,50 +1,31 @@
 using Test
 using PropCheck
+using PropCheck: getSubtypes
 
 """
 Tests the fallback shrinking for numbers to shrink towards zero.
 """
 function numsToZero(T)
-    @forall(generate(T), x -> begin
+    check(Integrated(Generator(T)), x -> begin
+        shrunks = shrink(x)
         if x == zero(T)
-            shrink(x) == zero(T)
-        elseif x < zero(T)
-            x < shrink(x) <= zero(T)
+            isempty(shrunks)
         else
-            x > shrink(x) >= zero(T)
+            !isempty(shrunks) && all( y -> zero(T) <= abs(y) < abs(x), shrunks)
         end
     end)
 end
 
-function numsNotSkipping(T)
-    target = generate(T)
-    _, res = @forall(generate(T), x -> x != target)
-    if target == res
-        true, nothing
-    else
-        false, (target,res)
-    end
-end
-
-function arraysToEmpty()
-    @forall(generate(T), x -> begin
-        shrunk = shrink(x)
-        if isempty(x)
-            length(x) == length(shrunk) == 0
-        else
-            length(x) > length(shrunk)
-        end
-    end)
+function noSkipping(T)
+    gen = Generator(T)
+    target = generate(gen)
+    check(Integrated(gen), !=(target))
 end
 
 @testset "All Tests" begin
-    @testset "Macro expansions" begin
-        # TODO: write tests for the expansion
-    end
-    @testset "Shrinking Numbers" begin
-        @check for T in union(subtypes(Unsigned), subtypes(AbstractFloat), (Float64, Float32, Float16))
-            numsToZero(T)
-            numsNotSkipping(T)
+    @testset "$f" for f in (numsToZero, noSkipping)
+        @testset "$T" for T in union(getSubtypes(Integer), getSubtypes(AbstractFloat), (Float64, Float32, Float16))
+            @test f(T)
         end
     end
 end
