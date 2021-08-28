@@ -16,7 +16,8 @@ Base.IteratorEltype(::Type{<:Generator}) = Base.HasEltype()
 Base.IteratorSize(::Type{<:Generator}) = Base.IsInfinite()
 Base.eltype(::Type{Generator{T,F}}) where {T,F} = T
 
-generate(rng, t::T) where {T <: Number} = t # numbers
+generate(rng, t::T) where {T <: Unsigned} = rand(zero(T):t) # numbers
+generate(rng, t::T) where {T <: Signed} = rand(-t:t) # numbers
 generate(rng, ::Type{T}) where {T <: Number} = rand(rng, T) # numbers
 generate(rng, t::NTuple{N,T}) where {N,T} = ntuple(i -> generate(rng, t[i]), N)
 generate(rng, ::Type{NTuple{N,T}}) where {N,T} = ntuple(_ -> generate(rng, T), N)
