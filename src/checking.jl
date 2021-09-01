@@ -1,4 +1,4 @@
-function check(i::Integrated, p, rng=Random.default_rng())
+function check(p, i::Integrated, rng=Random.default_rng())
     genAs = [ generate(rng, freeze(i)) for _ in 1:numTests[] ]
     something(findCounterexample(p, genAs), true)
 end

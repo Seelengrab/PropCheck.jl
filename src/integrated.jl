@@ -17,14 +17,26 @@ const iBool = Integrated(Generator(Bool))
 iWord(hi) = Integrated(mWord(hi))
 
 freeze(i::Integrated{T,F}) where {T,F} = Generator{T}(i.gen)
-dontShrink(i::Integrated{T,F}) where {T,F} = Generator{T}((rng) -> root(i.gen(rng))) # TODO: check if this should just produce the root continously instead
+# TODO: check if this should just produce the root continously instead
+dontShrink(i::Integrated{T,F}) where {T,F} = Generator{T}((rng) -> root(i.gen(rng)))
 dependent(g::Generator{T,F}) where {T,F} = Integrated{T,F}(g.gen)
 
 function listAux(genLen::Integrated, genA::Integrated{T, F}) where {T, F}
     n = dontShrink(genLen)
-    Generator{Vector{T}}(rng -> [ generate(rng, freeze(genA)) for _ in 1:generate(rng, n) ])
+    genF(rng) = [ generate(rng, freeze(genA)) for _ in 1:generate(rng, n) ]
+    Generator{Vector{T}}(genF)
 end
 listAux(genLen, genA) = listAux(Integrated(genLen), genA)
 
-vector(genLen, genA::Integrated{T,F}) where {T,F} = dependent(Generator{Vector{eltype(T)}}((rng) -> interleave(generate(rng, listAux(genLen, genA)))))
-tuple(genLen, genA::Integrated{T,F}) where {T,F} = dependent(Generator{NTuple{N, eltype(T)} where N}((rng) -> interleave((generate(rng, listAux(genLen, genA))...,))))
+# TODO: this should be possible to make more generic
+function vector(genLen, genA::Integrated{T,F}) where {T,F}
+    genF(rng) = interleave(generate(rng, listAux(genLen, genA)))
+    gen = Generator{Vector{eltype(T)}}(genF)
+    dependent(gen)
+end
+
+function tuple(genLen, genA::Integrated{T,F}) where {T,F}
+    genF(rng) = interleave((generate(rng, listAux(genLen, genA))...,))
+    gen = Generator{NTuple{N, eltype(T)} where N}(genF)
+    dependent(gen)
+end

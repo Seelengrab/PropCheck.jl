@@ -1,1 +1,1 @@
-const numTests = Ref(100)
+const numTests = Ref(20)
