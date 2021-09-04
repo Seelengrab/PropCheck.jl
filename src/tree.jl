@@ -23,7 +23,7 @@ end
 # recursively shrinks and creates a tree
 treeMap(root) = imap(t -> Tree(t, treeMap(t)), shrink(root))
 
-function interleave(trees::Union{<:NTuple{N,Tree{T}},Vector{<:Tree{T}}}) where {T,N}
+function interleave(trees::Union{<:NTuple{N,Tree{T}},Vector{<:Tree{T}},<:Tuple}) where {T,N}
     # the root of interleaved trees is just all individual roots
     nRoot = map(root, trees)
     return Tree(nRoot, treeMap(nRoot)) # TODO: isn't this just `unfold`?

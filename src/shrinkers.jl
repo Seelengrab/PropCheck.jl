@@ -1,16 +1,7 @@
-generate(x) = generate(Random.default_rng(), x)
+# Shrinking functions for default data types
 
-struct Word
-    hi::UInt
-end
-generate(rng, w::Word) = Word(rand(rng, 0:w.hi))
-generate(rng, ::Type{Word}) = Word(rand(rng, UInt))
-const mWord(w) = Generator(Word(w))
-shrink(w::Word) = map(Word, shrink(w.hi))
 
-generate(rng, ::Bool) = rand(rng, Bool)
-generate(rng, ::Type{Bool}) = rand(rng, Bool)
-const mBool = Generator(Bool)
+# shrinks `true` to `Bool[false]`` and `false` to `Bool[]`
 function shrink(t::Bool)
     if t
         return Bool[false]

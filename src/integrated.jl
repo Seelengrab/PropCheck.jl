@@ -11,6 +11,7 @@ function Integrated(el::T) where T
     gen(_) = unfold(shrink, el)
     Integrated{Tree{T},typeof(gen)}(gen)
 end
+Integrated(::Type{T}) where T = Integrated(Generator(T))
 generate(rng, i::Integrated) = i.gen(rng)
 
 const iBool = Integrated(Generator(Bool))
@@ -38,5 +39,12 @@ end
 function tuple(genLen, genA::Integrated{T,F}) where {T,F}
     genF(rng) = interleave((generate(rng, listAux(genLen, genA))...,))
     gen = Generator{NTuple{N, eltype(T)} where N}(genF)
+    dependent(gen)
+end
+
+function interleave(integrated...)
+    T = typeof(map((root ∘ generate), integrated))
+    genF(rng) = interleave(map(i -> generate(rng, i), integrated))
+    gen = Generator{Tree{T}}(genF)
     dependent(gen)
 end

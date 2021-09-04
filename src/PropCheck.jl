@@ -7,11 +7,10 @@ using InteractiveUtils: subtypes
 export generate, shrink
 export check
 export Integrated, Generator
-export mBool, mWord, Word
 
 # Trees
-export root, subtrees, unfold
-export iWord, iBool
+export root, subtrees, unfold, interleave
+export igen
 
 """
     shrink(x)
@@ -31,5 +30,6 @@ include("tree.jl")
 include("integrated.jl")
 include("checking.jl")
 
+const igen = (Integrated ∘ Generator)
 
 end # module
