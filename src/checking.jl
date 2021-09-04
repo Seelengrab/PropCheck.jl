@@ -1,3 +1,5 @@
+using Logging
+
 function check(p, i::Integrated, rng=Random.default_rng())
     genAs = [ generate(rng, freeze(i)) for _ in 1:numTests[] ]
     something(findCounterexample(p, genAs), true)
@@ -15,5 +17,6 @@ function findCounterexample(f, trees::Vector{<:Tree})
     _f = (!f ∘ root)
     filter!(_f, trees)
     isempty(trees) && return nothing
+    @info "Found counterexample for '$f', beginning shrinking..."
     (collect ∘ minimize(_f) ∘ first)(trees)
 end
