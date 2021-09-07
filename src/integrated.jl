@@ -14,6 +14,15 @@ end
 Integrated(::Type{T}) where T = Integrated(Generator(T))
 generate(rng, i::Integrated) = i.gen(rng)
 
+Base.iterate(g::Integrated, state=nothing) = (generate(default_rng(), g), nothing)
+Base.IteratorEltype(::Type{<:Integrated}) = Base.HasEltype()
+Base.IteratorSize(::Type{<:Integrated}) = Base.IsInfinite()
+Base.eltype(::Type{Integrated{T,F}}) where {T,F} = T
+
+################################################
+# utility for working with integrated generators
+################################################
+
 const iBool = Integrated(Generator(Bool))
 iWord(hi) = Integrated(mWord(hi))
 
@@ -45,6 +54,12 @@ end
 function interleave(integrated...)
     T = typeof(map((root ∘ generate), integrated))
     genF(rng) = interleave(map(i -> generate(rng, i), integrated))
+    gen = Generator{Tree{T}}(genF)
+    dependent(gen)
+end
+
+function Base.filter(p, genA::Integrated{T,F}, trim=false, prod_unique=true) where {T,F}
+    genF(rng) = first(filter(p, generate(rng, freeze(genA)), trim, prod_unique))
     gen = Generator{Tree{T}}(genF)
     dependent(gen)
 end
