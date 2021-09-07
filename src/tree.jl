@@ -32,7 +32,7 @@ end
 """
     filter(p, t::Tree[, trim=false])
 
-Filters `t` lazily such that all elements contained fulfill the predicate `p`.
+Filters `t` lazily such that all elements contained fulfill the predicate `p`, i.e. all elements for which `p` is `false` are removed.
 
 The first-level subtrees produced by the returned tree will have unique roots amongst each other.
 
@@ -40,11 +40,14 @@ The first-level subtrees produced by the returned tree will have unique roots am
 fulfill the predicate or whether only that root should be skipped, still trying to
 shrink its subtrees. This trades performance (less shrinks to check) for quality
 (fewer/less diverse shrink values tried).
+
+`prod_unique` controls whether subtrees are filtered for uniqueness during production.
 """
-function Base.filter(f, t::Tree{T,sT}, trim=false) where {T,sT}
+function Base.filter(f, t::Tree{T,sT}, trim=false, prod_unique=true) where {T,sT}
     r = root(t)
     _filter(x) = filter(f, x, trim)
-    lazySubtrees = iunique(flatten(imap(_filter, subtrees(t))); by=root)
+    flat = flatten(imap(_filter, subtrees(t)))
+    lazySubtrees = prod_unique ? iunique(flat; by=root) : flat
     
     if f(r)
         Tree{T}[ Tree(r, lazySubtrees) ]
