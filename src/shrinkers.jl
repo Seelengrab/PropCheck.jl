@@ -10,24 +10,23 @@ function shrink(t::Bool)
     end
 end
 
-# shrinks an unsigned value by half and one/two less, since we don't want to miss 0 when only generating even numbers
 function shrink(w::T) where T <: Unsigned
-    ret = T[]
-    w > 0x2 && push!(ret, w ÷ 0x2, w - 0x2)
-    w > 0x0 && push!(ret, w - 0x1)
-    return ret
+    ret = T[ w & ~(one(T) << mask) for mask in (sizeof(T)*8 - 1):-1:zero(T) ]
+    w > zero(T) && push!(ret, w - 0x1)
+    w > one(T) && push!(ret, w - 0x2)
+    push!(ret, w >> 0x1)
+    return unique!(filter!(!=(w), ret))
 end
 
-# shrinks a signed value by shrinking its absolute value like an unsigned
+# shrinks a signed value by shrinking its absolute value like an unsigned and then negating that
 function shrink(w::T) where T <: Signed
-    ret = T[]
-    w ==  2 && push!(ret, zero(T))
-    w >   2 && push!(ret, w ÷ 2, -(w ÷ 2))
-    w >   0 && push!(ret, w - 1, -(w - 1), w - 2, -(w - 2))
-    w <   0 && push!(ret, w + 1, -(w + 1), w + 2, -(w + 2))
-    w <  -2 && push!(ret, w ÷ 2, -(w ÷ 2))
-    w == -2 && push!(ret, zero(T))
-    return unique!(ret)
+    ret = signed.(shrink(unsigned(abs(w))))
+    append!(ret, ret)
+    retView = @view ret[end÷2+1:end]
+    map!(-, retView, retView)
+    return filter!(unique!(ret)) do x
+        x != w && x != -w
+    end
 end
 
 # shrinks a character by shrinking its codepoint 
