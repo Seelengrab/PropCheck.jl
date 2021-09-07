@@ -5,18 +5,21 @@ function check(p, i::Integrated, rng=Random.default_rng())
     something(findCounterexample(p, genAs), true)
 end
 
-minimize(f) = t -> minimize(f, t)
+minimize(f) = Base.Fix1(minimize, f)
 function minimize(f, t::Tree{T,sT}) where {T,sT}
     r = root(t)
     subs = subtrees(t)
-    s = filter!(f, collect(subs))
-    isempty(s) && return (r,)
-    flatten(((r,), flatten(imap(minimize(f), (first(s),)))))
+    !any(f, subs) && return (r,)
+    el = first(Iterators.filter(f, subs))
+    @debug "Possible shrink value" el
+    flatten(((r,), flatten(imap(minimize(f), (el,)))))
 end
+
 function findCounterexample(f, trees::Vector{<:Tree})
     _f = (!f ∘ root)
     filter!(_f, trees)
     isempty(trees) && return nothing
-    @info "Found counterexample for '$f', beginning shrinking..."
-    (collect ∘ minimize(_f) ∘ first)(trees)
+    t = first(trees)
+    @info "Found counterexample for '$f', beginning shrinking..." t
+    collect(minimize(_f, t))
 end
