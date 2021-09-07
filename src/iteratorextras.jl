@@ -19,7 +19,6 @@ function Base.iterate(itr::UniqueIterator, (state, cache))
         el, state = t
         h = hash(itr.by(el))
         h ∉ cache && break
-        yield() # so we don't hog ressources in case we never return
     end
     push!(cache, h)
     return el, (state, cache)
