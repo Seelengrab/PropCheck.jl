@@ -15,9 +15,9 @@ Base.show(io::IO, t::Tree) = print(io, "Tree(", t.root, ')')
 AbstractTrees.children(t::Tree) = collect(subtrees(t))
 Base.eltype(::Type{<:Tree{T}}) where {T} = T
 
+unfold(f) = Base.Fix1(unfold, f)
 function unfold(f, t::T) where {T}
-    _unfold = Base.Fix1(unfold, f)
-    Tree(t, imap(_unfold, f(t)))
+    Tree(t, imap(unfold, f(t)))
 end
 
 # recursively shrinks and creates a tree
@@ -70,9 +70,9 @@ The first-level subtrees produced by the returned tree will have unique roots am
 Base.map(f, t::Tree) = imap(f, t)
 
 # lazy mapping by default
+_map(f) = Base.Fix1(imap, f)
 function Base.Iterators.map(f, t::Tree{T,sT}) where {T,sT}
     r = root(t)
-    _map(t) = imap(f, t)
     lazySubtrees = iunique(imap(_map, subtrees(t)))
     return Tree(f(r), lazySubtrees)
 end
