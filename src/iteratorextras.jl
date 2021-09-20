@@ -68,7 +68,7 @@ end
 struct Shuffle{T}
     itr::T
     cacheSize::Int
-    Shuffle(itr::T, cacheSize::Int=min(100, itSize isa Base.HasShape || itSize isa Base.HasLength ? length(s.itr)÷5 : 5)) where T = new{T}(itr, cacheSize)
+    Shuffle(itr::T, cacheSize::Int=min(100, Base.IteratorSize(T) isa Base.HasShape || Base.IteratorSize(T) isa Base.HasLength ? length(s.itr)÷5 : 5)) where T = new{T}(itr, cacheSize)
 end
 Shuffle(v::AbstractArray) = shuffle!(v) # we already have the memory, so shuffle it directly
 
@@ -80,7 +80,6 @@ Base.length(s::Shuffle{T}) where T = length(s.itr)
 
 function Base.iterate(s::Shuffle{T}) where T
     els = eltype(T)[]
-    itSize = Base.IteratorSize(T)
     sizehint!(els, s.cacheSize)
     it = iterate(s.itr)
     while it !== nothing && length(els) < s.cacheSize
