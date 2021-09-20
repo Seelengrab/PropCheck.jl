@@ -4,11 +4,11 @@ struct Integrated{T,F}
     gen::F
 end
 function Integrated(m::Generator{T,F}) where {T,F}
-    gen(rng) = unfold(shrink, generate(rng, m))
+    gen(rng) = unfold(shuffle! ∘ shrink, generate(rng, m))
     Integrated{Tree{T},typeof(gen)}(gen)
 end
 function Integrated(el::T) where T
-    gen(_) = unfold(shrink, el)
+    gen(_) = unfold(shuffle! ∘ shrink, el)
     Integrated{Tree{T},typeof(gen)}(gen)
 end
 Integrated(::Type{T}) where T = Integrated(Generator(T))
@@ -58,8 +58,8 @@ function interleave(integrated...)
     dependent(gen)
 end
 
-function Base.filter(p, genA::Integrated{T,F}, trim=false, prod_unique=true) where {T,F}
-    genF(rng) = first(filter(p, generate(rng, freeze(genA)), trim, prod_unique))
+function Base.filter(p, genA::Integrated{T,F}, trim=false) where {T,F}
+    genF(rng) = first(filter(p, generate(rng, freeze(genA)), trim))
     gen = Generator{Tree{T}}(genF)
     dependent(gen)
 end
