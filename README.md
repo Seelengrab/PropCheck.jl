@@ -30,7 +30,7 @@ gen = igen(UInt8)
 # ENV["JULIA_DEBUG"] = PropCheck
 
 # check the property
-check(lessThanX(5), gen)
+check(lessThan5, gen)
 ```
 
 Output:
