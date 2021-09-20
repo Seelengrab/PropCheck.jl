@@ -4,11 +4,11 @@ struct Integrated{T,F}
     gen::F
 end
 function Integrated(m::Generator{T,F}) where {T,F}
-    gen(rng) = unfold(shuffle! ∘ shrink, generate(rng, m))
+    gen(rng) = unfold(Shuffle ∘ shrink, generate(rng, m))
     Integrated{Tree{T},typeof(gen)}(gen)
 end
 function Integrated(el::T) where T
-    gen(_) = unfold(shuffle! ∘ shrink, el)
+    gen(_) = unfold(Shuffle ∘ shrink, el)
     Integrated{Tree{T},typeof(gen)}(gen)
 end
 Integrated(::Type{T}) where T = Integrated(Generator(T))

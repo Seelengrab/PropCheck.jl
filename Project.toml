@@ -1,7 +1,7 @@
 name = "PropCheck"
 uuid = "ca382230-33be-11e9-0059-d981d03070e4"
 authors = ["Sukera <Seelengrab@users.noreply.github.com>"]
-version = "0.5.0"
+version = "0.6.0"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"

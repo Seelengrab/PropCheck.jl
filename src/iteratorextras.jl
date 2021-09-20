@@ -64,3 +64,42 @@ function Base.iterate(f::Flatten{T}, state=()) where T
     end
     return convert(T, y[1]), (x[2], x[1], y[2])
 end
+
+struct Shuffle{T}
+    itr::T
+    cacheSize::Int
+    Shuffle(itr::T, cacheSize::Int=min(100, itSize isa Base.HasShape || itSize isa Base.HasLength ? length(s.itr)÷5 : 5)) where T = new{T}(itr, cacheSize)
+end
+Shuffle(v::AbstractArray) = shuffle!(v) # we already have the memory, so shuffle it directly
+
+Base.IteratorEltype(::Shuffle{T}) where T = Base.IteratorEltype(T)
+Base.IteratorSize(::Shuffle{T}) where T = Base.IteratorSize(T)
+Base.eltype(::Shuffle{T}) where T = eltype(T)
+Base.size(s::Shuffle{T}) where T = size(s.itr)
+Base.length(s::Shuffle{T}) where T = length(s.itr)
+
+function Base.iterate(s::Shuffle{T}) where T
+    els = eltype(T)[]
+    itSize = Base.IteratorSize(T)
+    sizehint!(els, s.cacheSize)
+    it = iterate(s.itr)
+    while it !== nothing && length(els) < s.cacheSize
+        el, state = it
+        push!(els, el)
+        it = iterate(s.itr, state)
+    end
+    shuffle!(els)
+    iterate(s, (els, it))
+end
+
+function Base.iterate(s::Shuffle, (els, it))
+    iszero(length(els)) && return nothing
+    shuffle!(reverse!(els))
+    ret = popfirst!(els)
+    if it !== nothing
+        el, state = it
+        push!(els, el)
+        it = iterate(s.itr, state)
+    end
+    return (ret, (els, it))
+end
