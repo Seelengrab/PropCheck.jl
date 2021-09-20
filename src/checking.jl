@@ -6,13 +6,14 @@ function check(p, i::Integrated, rng=Random.default_rng())
 end
 
 minimize(f) = Base.Fix1(minimize, f)
-function minimize(f, t::Tree{T,sT}) where {T,sT}
+function minimize(f, t::Tree{T}) where {T}
     r = root(t)
     subs = subtrees(t)
-    !any(f, subs) && return (r,)
+    !any(f, subs) && return Flatten{T}(Ref(Ref(r)))
     el = first(Iterators.filter(f, subs))
     @debug "Possible shrink value" el
-    flatten(((r,), flatten(imap(minimize(f), (el,)))))
+    tail = Flatten{T}(imap(minimize(f), Ref(el)))
+    Flatten{T}(Ref(r), tail)
 end
 
 function findCounterexample(f, trees::Vector{<:Tree})

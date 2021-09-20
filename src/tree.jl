@@ -1,10 +1,11 @@
 using AbstractTrees
 using Base.Iterators: flatten, map as imap, filter as ifilter, product as iproduct
+using Random: shuffle!
 
-struct Tree{T,sT}
+struct Tree{T}
     root::T
-    subtrees::sT
-    Tree(el::T, subtrees=T[]) where T = new{T,typeof(subtrees)}(el, subtrees)
+    subtrees
+    Tree(el::T, subtrees=T[]) where T = new{T}(el, subtrees)
 end
 
 root(t::Tree) = t.root
@@ -17,16 +18,16 @@ Base.eltype(::Type{<:Tree{T}}) where {T} = T
 
 unfold(f) = Base.Fix1(unfold, f)
 function unfold(f, t::T) where {T}
-    Tree(t, imap(unfold, f(t)))
+    Tree(t, imap(unfold(f), f(t)))
 end
 
 # recursively shrinks and creates a tree
-treeMap(root) = imap(t -> Tree(t, treeMap(t)), shrink(root))
+shrinkMap(root) = imap(t -> Tree(t, shrinkMap(t)), shrink(root))
 
-function interleave(trees::Union{<:NTuple{N,Tree{T}},Vector{<:Tree{T}},<:Tuple}) where {T,N}
+function interleave(trees::Union{<:NTuple{N,Tree{T}},Vector{Tree{T}},<:Tuple}) where {T,N}
     # the root of interleaved trees is just all individual roots
     nRoot = map(root, trees)
-    return Tree(nRoot, treeMap(nRoot)) # TODO: isn't this just `unfold`?
+    return Tree(nRoot, shrinkMap(nRoot)) # TODO: isn't this just `unfold`?
 end
 
 """
@@ -40,22 +41,19 @@ The first-level subtrees produced by the returned tree will have unique roots am
 fulfill the predicate or whether only that root should be skipped, still trying to
 shrink its subtrees. This trades performance (less shrinks to check) for quality
 (fewer/less diverse shrink values tried).
-
-`prod_unique` controls whether subtrees are filtered for uniqueness during production.
 """
-function Base.filter(f, t::Tree{T,sT}, trim=false, prod_unique=true) where {T,sT}
+function Base.filter(f, t::Tree{T}, trim=false) where {T}
     r = root(t)
     _filter(x) = filter(f, x, trim)
-    flat = flatten(imap(_filter, subtrees(t)))
-    lazySubtrees = prod_unique ? iunique(flat; by=root) : flat
+    flat = Flatten{Tree{T}}(imap(_filter, subtrees(t)))
     
     if f(r)
-        Tree{T}[ Tree(r, lazySubtrees) ]
+        Flatten{Tree{T}}(Ref(Ref(Tree(r, flat))))
     else
         if !trim
-            lazySubtrees
+            flat
         else
-            Tree{T}[]
+            Flatten{Tree{T}}()
         end
     end
 end
@@ -71,7 +69,7 @@ Base.map(f, t::Tree) = imap(f, t)
 
 # lazy mapping by default
 _map(f) = Base.Fix1(imap, f)
-function Base.Iterators.map(f, t::Tree{T,sT}) where {T,sT}
+function Base.Iterators.map(f, t::Tree{T}) where {T}
     r = root(t)
     lazySubtrees = iunique(imap(_map, subtrees(t)))
     return Tree(f(r), lazySubtrees)

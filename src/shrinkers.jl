@@ -11,7 +11,7 @@ function shrink(t::Bool)
 end
 
 function shrink(w::T) where T <: Unsigned
-    ret = T[ w & ~(one(T) << mask) for mask in (sizeof(T)*8 - 1):-1:zero(T) ]
+    ret = T[ w & ~(one(T) << mask) for mask in zero(T):(sizeof(T)*8 - 1) ]
     w > zero(T) && push!(ret, w - 0x1)
     w > one(T) && push!(ret, w - 0x2)
     push!(ret, w >> 0x1)
@@ -42,7 +42,6 @@ end
 function shrink(s::String)
     ret = String[]
     io = IOBuffer()
-    pio(s) = print(io, s)
     for i in eachindex(s)
         head = @view s[begin:i-1]
         tail = @view s[i+1:end]
