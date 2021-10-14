@@ -7,13 +7,16 @@ end
 
 minimize(f) = Base.Fix1(minimize, f)
 function minimize(f, t::Tree{T}) where {T}
-    r = root(t)
-    subs = subtrees(t)
-    !any(f, subs) && return Flatten{T}(Ref(Ref(r)))
-    el = first(Iterators.filter(f, subs))
-    @debug "Possible shrink value" el
-    tail = Flatten{T}(imap(minimize(f), Ref(el)))
-    Flatten{T}(Ref(r), tail)
+    shrinks = T[]
+    while true
+        r = root(t)
+        @debug "Possible shrink value" r
+        push!(shrinks, r)
+        subs = subtrees(t)
+        !any(f, subs) && break
+        t = first(Iterators.filter(f, subs))
+    end
+    return shrinks
 end
 
 function findCounterexample(f, trees::Vector{<:Tree})
@@ -22,5 +25,5 @@ function findCounterexample(f, trees::Vector{<:Tree})
     isempty(trees) && return nothing
     t = first(trees)
     @info "Found counterexample for '$f', beginning shrinking..." t
-    collect(minimize(_f, t))
+    minimize(_f, t)
 end
