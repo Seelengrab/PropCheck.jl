@@ -29,7 +29,7 @@ function shrink(w::T) where T <: Signed
     end
 end
 
-# shrinks a character by shrinking its codepoint 
+# shrinks a character by shrinking its codepoint
 function shrink(w::Char)
     c = codepoint(w)
     ret = Char[]
