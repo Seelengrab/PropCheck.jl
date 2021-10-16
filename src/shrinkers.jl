@@ -12,10 +12,10 @@ end
 
 function shrink(w::T) where T <: Unsigned
     ret = T[ w & ~(one(T) << mask) for mask in zero(T):(sizeof(T)*8 - 1) ]
-    w > zero(T) && push!(ret, w - 0x1)
-    w > one(T) && push!(ret, w - 0x2)
-    push!(ret, w >> 0x1)
-    return unique!(filter!(!=(w), ret))
+    w > zero(T) && pushfirst!(ret, w - 0x1)
+    w > one(T) && pushfirst!(ret, w - 0x2)
+    pushfirst!(ret, w >> 0x1)
+    return filter!(!=(w), unique!(ret))
 end
 
 # shrinks a signed value by shrinking its absolute value like an unsigned and then negating that
