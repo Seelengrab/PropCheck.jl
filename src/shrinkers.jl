@@ -15,7 +15,7 @@ function shrink(w::T) where T <: Unsigned
     w > zero(T) && pushfirst!(ret, w - 0x1)
     w > one(T) && pushfirst!(ret, w - 0x2)
     pushfirst!(ret, w >> 0x1)
-    return filter!(!=(w), unique!(ret))
+    return sort!(filter!(!=(w), unique!(ret)))
 end
 
 # shrinks a signed value by shrinking its absolute value like an unsigned and then negating that
