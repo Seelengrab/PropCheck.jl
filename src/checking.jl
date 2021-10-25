@@ -28,6 +28,6 @@ function findCounterexample(f, trees::Vector{<:Tree})
     filter!(_f, trees)
     isempty(trees) && return nothing
     example = first(trees).root
-    @info "Found counterexample for '$f', beginning shrinking..." example
+    @info "Found counterexample for '$f', beginning shrinking..."
     minimize(_f, first(trees))
 end
