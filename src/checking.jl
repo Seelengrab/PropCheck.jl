@@ -3,7 +3,7 @@ using Logging
 function check(p, i::Integrated, rng=Random.default_rng())
     genAs = [ generate(rng, freeze(i)) for _ in 1:numTests[] ]
     res = findCounterexample(p, genAs)
-    return something(res, true)
+    return something(res, true) |> last
 end
 
 minimize(f) = Base.Fix1(minimize, f)
