@@ -19,7 +19,6 @@ function minimize(f, t::Tree{T}) where {T}
     end
     @info "$(length(shrinks)) counterexamples found"
     minimum = last(shrinks)
-    @info "Smallest counterexample: " minimum
     return shrinks
 end
 
