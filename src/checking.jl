@@ -39,7 +39,7 @@ function minimize!(log, f, t::Tree{T}, initEx) where {T}
         unique_errors = filter(!isnothing, unique(exception, log))
         distinct_errors = length(unique_errors)
         infomsg *= ", of which $errcount threw $distinct_errors distinct exception types"
-        @info infomsg Errors=unique_errors
+        @info infomsg Errors=map(exception, unique_errors)
     else
         @info infomsg
     end
