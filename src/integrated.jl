@@ -14,9 +14,13 @@ end
 Integrated(::Type{T}) where T = Integrated(Generator(T))
 generate(rng, i::Integrated) = i.gen(rng)
 
-Base.iterate(g::Integrated, state=nothing) = (generate(default_rng(), g), nothing)
+function Base.iterate(g::Integrated, state=nothing)
+    el = generate(default_rng(), g)
+    el === nothing && return nothing
+    (el, nothing)
+end
 Base.IteratorEltype(::Type{<:Integrated}) = Base.HasEltype()
-Base.IteratorSize(::Type{<:Integrated}) = Base.IsInfinite()
+Base.IteratorSize(::Type{<:Integrated}) = Base.SizeUnknown()
 Base.eltype(::Type{Integrated{T,F}}) where {T,F} = T
 
 ################################################
@@ -59,7 +63,11 @@ function interleave(integrated...)
 end
 
 function Base.filter(p, genA::Integrated{T,F}, trim=false) where {T,F}
-    genF(rng) = first(filter(p, generate(rng, freeze(genA)), trim))
-    gen = Generator{Tree{T}}(genF)
+    function genF(rng)
+        element = iterate(filter(p, generate(rng, freeze(genA)), trim))
+        element === nothing && return nothing
+        return first(element)
+    end
+    gen = Generator{Union{Nothing, Tree{T}}}(genF)
     dependent(gen)
 end

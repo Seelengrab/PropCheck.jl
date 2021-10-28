@@ -22,9 +22,10 @@ Tests that when a given predicate holds for the parent, it also holds for its su
 """
 function predicateHoldsForSubtrees(p, T)
     g = filter(p, igen(T))
-    toCheck = (first(g) for _ in 1:numTests[])
+    toCheck = filter!(!isnothing, [iterate(g) for _ in 1:numTests[]])
+    iszero(length(toCheck)) && @warn "no values to check for $T"
     all(toCheck) do x
-        all(p ∘ root, Iterators.take(subtrees(x), 100))
+        all(p ∘ root, Iterators.take(subtrees(first(x)), 100))
     end
 end
 
