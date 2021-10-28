@@ -36,10 +36,13 @@ function minimize!(log, f, t::Tree{T}, initEx) where {T}
     infomsg = "$(length(log)) counterexamples found"
     errcount = count(errored, log)
     if !iszero(errcount)
-        distinct_errors = count(!isnothing, unique(exception, log))
+        unique_errors = filter(!isnothing, unique(exception, log))
+        distinct_errors = length(unique_errors)
         infomsg *= ", of which $errcount threw $distinct_errors distinct exception types"
+        @info infomsg Errors=unique_errors
+    else
+        @info infomsg
     end
-    @info infomsg nothing
     log
 end
 
