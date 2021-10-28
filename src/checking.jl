@@ -3,30 +3,60 @@ using Logging
 function check(p, i::Integrated, rng=Random.default_rng())
     genAs = [ generate(rng, freeze(i)) for _ in 1:numTests[] ]
     res = findCounterexample(p, genAs)
-    return something(res, true) |> last
+    res === nothing && return true
+    @debug res
+    entry = last(res)
+    if errored(entry)
+        return entry.example, exception(entry)
+    else
+        return entry.example
+    end
 end
 
-minimize(f) = Base.Fix1(minimize, f)
-function minimize(f, t::Tree{T}) where {T}
-    shrinks = T[]
+const ExState = Tuple{<:Exception,Vector{Base.StackTraces.StackFrame}}
+struct CheckEntry{T}
+    example::T
+    exception::Union{Nothing,ExState}
+end
+
+errored(ce::CheckEntry) = ce.exception !== nothing
+exception(ce::CheckEntry) = errored(ce) && first(ce.exception)
+
+function minimize!(log, f, t::Tree{T}, initEx) where {T}
+    ex::Union{Nothing,ExState} = initEx
     while true
         r = root(t)
         @debug "Possible shrink value" r
-        push!(shrinks, r)
+        push!(log, CheckEntry(r, ex))
         subs = subtrees(t)
-        !any(f, subs) && break
-        t = first(Iterators.filter(f, subs))
+        filteredSubtrees = Iterators.filter(first, Iterators.map(f, subs))
+        !any(first, filteredSubtrees) && break
+        _, t, ex = first(filteredSubtrees)
     end
-    @info "$(length(shrinks)) counterexamples found"
-    minimum = last(shrinks)
-    return shrinks
+    infomsg = "$(length(log)) counterexamples found"
+    errcount = count(errored, log)
+    if !iszero(errcount)
+        distinct_errors = count(!isnothing, unique(exception, log))
+        infomsg *= ", of which $errcount threw $distinct_errors distinct exception types"
+    end
+    @info infomsg nothing
+    log
 end
 
 function findCounterexample(f, trees::Vector{<:Tree})
-    _f = (!f ∘ root)
-    filter!(_f, trees)
-    isempty(trees) && return nothing
-    example = first(trees).root
+    function _f(tree)
+        try
+            ((!f ∘ root)(tree), tree, nothing)
+        catch ex
+            trace = stacktrace(catch_backtrace())
+            (true, tree, (ex, trace)) # if we threw, the property failed
+        end
+    end
+    checkedTrees = map(_f, trees)
+    filter!(first, checkedTrees)
+    isempty(checkedTrees) && return nothing
     @info "Found counterexample for '$f', beginning shrinking..."
-    minimize(_f, first(trees))
+    _, initTree, initEx = first(checkedTrees)
+    log = CheckEntry{eltype(initTree)}[]
+    minimize!(log, _f, initTree, initEx)
 end

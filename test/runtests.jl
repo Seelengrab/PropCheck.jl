@@ -28,6 +28,14 @@ function predicateHoldsForSubtrees(p, T)
     end
 end
 
+function throwingProperty(x)
+    if x < 5
+        return true
+    else
+        throw(ArgumentError("x not smaller than 5"))
+    end
+end
+
 const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat), (Float64, Float32, Float16))
 
 @testset "All Tests" begin
@@ -44,12 +52,15 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat), (Float6
         end
     end
     @testset "random vectors are sorted" begin
-        @test last(check(issorted, PropCheck.vector(igen(20), igen(UInt8)))) == [0x1, 0x0]
+        @test check(issorted, PropCheck.vector(igen(20), igen(UInt8))) == [0x1, 0x0]
     end
     @testset "all even numbers are less than 5" begin
-        @test last(check(<(5), filter(iseven, igen(UInt8)))) == 0x6
+        @test check(<(5), filter(iseven, igen(UInt8))) == 0x6
     end
     @testset "there are only even numbers" begin
-        @test last(check(iseven, igen(UInt8))) == 0x1
+        @test check(iseven, igen(UInt8)) == 0x1
+    end
+    @testset "throwing properties still shrink" begin
+        @test check(throwingProperty, igen(UInt8)) == (0x05, ArgumentError("x not smaller than 5"))
     end
 end
