@@ -71,6 +71,6 @@ Base.map(f, t::Tree) = imap(f, t)
 _map(f) = Base.Fix1(imap, f)
 function Base.Iterators.map(f, t::Tree{T}) where {T}
     r = root(t)
-    lazySubtrees = iunique(imap(_map, subtrees(t)))
+    lazySubtrees = iunique(imap(_map(f), subtrees(t)))
     return Tree(f(r), lazySubtrees)
 end

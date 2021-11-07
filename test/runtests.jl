@@ -29,6 +29,17 @@ function predicateHoldsForSubtrees(p, T)
     end
 end
 
+guaranteeEven(x) = div(x,0x2)*0x2
+
+function mappedGeneratorsObserveProperty(T)
+    g = map(guaranteeEven, igen(T))
+    toCheck = filter!(!isnothing, [iterate(g) for _ in 1:numTests[]])
+    iszero(length(toCheck)) && @warn "no values to check for $T"
+    all(toCheck) do x
+        all(iseven ∘ root, Iterators.take(subtrees(first(x)), 100))
+    end
+end
+
 function throwingProperty(x)
     if x < 5
         return true
@@ -48,8 +59,13 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat), (Float6
     @testset "filter predicates hold for shrunk values" begin
         for p in (iseven, isodd)
             @testset "$p($T)" for T in (UInt8, UInt16, UInt32, UInt64)
-                @test predicateHoldsForSubtrees(p, T) broken=(T == BigInt || T <: AbstractFloat)
+                @test predicateHoldsForSubtrees(p, T)
             end
+        end
+    end
+    @testset "shrunk values of mapped generator are also even" begin
+        @testset "mappedGeneratorsObserveProperty($T)" for T in (UInt8, UInt16, UInt32, UInt64)
+            @test mappedGeneratorsObserveProperty(T)
         end
     end
     @testset "random vectors are sorted" begin
