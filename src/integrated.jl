@@ -35,11 +35,12 @@ freeze(i::Integrated{T,F}) where {T,F} = Generator{T}(i.gen)
 dontShrink(i::Integrated{T,F}) where {T,F} = Generator{T}((rng) -> root(i.gen(rng)))
 dependent(g::Generator{T,F}) where {T,F} = Integrated{T,F}(g.gen)
 
-function listAux(genLen::Integrated, genA::Integrated{T, F}) where {T, F}
+function listAux(genLen::Integrated, genA::Generator{T, F}) where {T, F}
     n = dontShrink(genLen)
-    genF(rng) = [ generate(rng, freeze(genA)) for _ in 1:generate(rng, n) ]
+    genF(rng) = [ generate(rng, genA) for _ in 1:generate(rng, n) ]
     Generator{Vector{T}}(genF)
 end
+listAux(genLen, genA::Integrated) = listAux(genLen, freeze(genA))
 listAux(genLen, genA) = listAux(Integrated(genLen), genA)
 
 # TODO: this should be possible to make more generic
@@ -62,12 +63,19 @@ function interleave(integrated...)
     dependent(gen)
 end
 
+function Base.map(f, gen::Integrated{T,F}, mapType::Type{_T}=Type{Any}) where {T,F,_T}
+    function genF(rng)
+        map(f, generate(rng, freeze(gen)))
+    end
+    dependent(Generator{Tree{_T}}(genF))
+end
+
 function Base.filter(p, genA::Integrated{T,F}, trim=false) where {T,F}
     function genF(rng)
         element = iterate(filter(p, generate(rng, freeze(genA)), trim))
         element === nothing && return nothing
         return first(element)
     end
-    gen = Generator{Union{Nothing, Tree{T}}}(genF)
+    gen = Generator{Union{Nothing, T}}(genF)
     dependent(gen)
 end
