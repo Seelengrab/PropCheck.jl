@@ -1,4 +1,3 @@
-using AbstractTrees
 using Base.Iterators: flatten, map as imap, filter as ifilter, product as iproduct
 using Random: shuffle!
 
@@ -13,7 +12,6 @@ subtrees(t::Tree) = t.subtrees
 
 Base.show(io::IO, t::Tree) = print(io, "Tree(", t.root, ')')
 
-AbstractTrees.children(t::Tree) = collect(subtrees(t))
 Base.eltype(::Type{<:Tree{T}}) where {T} = T
 
 unfold(f) = Base.Fix1(unfold, f)
