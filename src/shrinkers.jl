@@ -15,6 +15,9 @@ function shrink(w::T) where T <: Unsigned
     w > zero(T) && pushfirst!(ret, w - 0x1)
     w > one(T) && pushfirst!(ret, w - 0x2)
     pushfirst!(ret, w >> 0x1)
+    lowmask = (one(w) << (sizeof(w)*0x4) - 0x1)
+    pushfirst!(ret, w & lowmask)
+    push!(ret, w & ~lowmask)
     return sort!(filter!(!=(w), unique!(ret)))
 end
 
