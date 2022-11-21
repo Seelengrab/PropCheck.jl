@@ -56,13 +56,6 @@ function Base.filter(f, t::Tree{T}, trim=false) where {T}
     end
 end
 
-"""
-    map(f, t::Tree)
-
-Maps `f` lazily over all elements in `t`, producing a new tree.
-
-The first-level subtrees produced by the returned tree will have unique roots amongst each other.
-"""
 Base.map(f, t::Tree) = imap(f, t)
 
 # lazy mapping by default

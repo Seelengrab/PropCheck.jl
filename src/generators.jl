@@ -10,10 +10,10 @@ Generator(el::T) where T = Generator{T}((rng)->generate(rng, el))
 Generator(::Type{T}) where T = Generator{T}((rng)->generate(rng, T))
 
 # unsure if this is really a good idea
-function Base.iterate(g::Generator, state=nothing)
-    element = generate(default_rng(), g)
+function Base.iterate(g::Generator, rng=default_rng())
+    element = generate(rng, g)
     element === nothing && return nothing
-    (element, nothing)
+    (element, rng)
 end
 Base.IteratorEltype(::Type{<:Generator}) = Base.HasEltype()
 Base.IteratorSize(::Type{<:Generator}) = Base.IsInfinite()

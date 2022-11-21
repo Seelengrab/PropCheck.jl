@@ -1,7 +1,11 @@
 # Shrinking functions for default data types
 
 
-# shrinks `true` to `Bool[false]`` and `false` to `Bool[]`
+"""
+    shrink(::Bool)
+
+`true` shrinks to `false`. `false` produces no shrunk values.
+"""
 function shrink(t::Bool)
     if t
         return Bool[false]
@@ -10,6 +14,13 @@ function shrink(t::Bool)
     end
 end
 
+"""
+    shrink(::T) where T <: Unsigned
+
+Shrinks an unsigned value by masking out various part of its bitpattern.
+
+Shrinks towards `zero(T)`. `zero(T)` produces no shrunk values.
+"""
 function shrink(w::T) where T <: Unsigned
     ret = T[ w & ~(one(T) << mask) for mask in zero(T):(sizeof(T)*8 - 1) ]
     w > zero(T) && pushfirst!(ret, w - 0x1)
@@ -21,7 +32,14 @@ function shrink(w::T) where T <: Unsigned
     return sort!(filter!(!=(w), unique!(ret)))
 end
 
-# shrinks a signed value by shrinking its absolute value like an unsigned and then negating that
+"""
+    shrink(::T) where T <: Signed
+
+Shrinks a signed value by shrinking its absolute value like an unsigned and then also negating that.
+Both the absolute and the negated value are part of the shrinking result.
+
+Shrinks towards `zero(T)`. `zero(T)` produces no shrunk values.
+"""
 function shrink(w::T) where T <: Signed
     ret = signed.(shrink(unsigned(abs(w))))
     append!(ret, ret)
@@ -32,7 +50,13 @@ function shrink(w::T) where T <: Signed
     end
 end
 
-# shrinks a character by shrinking its codepoint
+"""
+    shrink(::Char)
+
+Shrinks a character by shrinking its unicode codepoint.
+
+Shrinks towards `'\\0'`. `'\\0'` produces no shrunk values.
+"""
 function shrink(w::Char)
     c = codepoint(w)
     ret = Char[]
@@ -41,17 +65,23 @@ function shrink(w::Char)
     return ret
 end
 
-# drops a character and shrinks a character to form new strings
+"""
+    shrink(::String)
+
+Shrinks a string by either dropping a character, or shrinking a character.
+
+Shrinks towards the empty string, `""`. The empty string produces no shrunk values.
+"""
 function shrink(s::String)
     ret = String[]
     io = IOBuffer()
     for i in eachindex(s)
-        head = @view s[begin:i-1]
-        tail = @view s[i+1:end]
+        head = @view s[begin:prevind(s, i)]
+        tail = @view s[nextind(s, i):end]
         write(io, head)
         write(io, tail)
         push!(ret, String(take!(io)))
-        
+
         shrinks = shrink(s[i])
         for sh in shrinks
             write(io, head)
@@ -68,15 +98,14 @@ end
 ###########
 
 # drop each index once
-drops(root) = (deleteat!(deepcopy(root), i) for i in eachindex(root) if length(root) > 1)
+drops(root) = (deleteat!(deepcopy(root), i) for i in eachindex(root) if length(root) > 0)
 
 # create all tuples with all identity, except for one place which we shrink
-allFuncs(root) = (( i == idx ? shrink : (x -> [x]) for i in 1:length(root) ) for idx in eachindex(root))
+allFuncs(root) = (( i == idx ? shrink : (x -> [x]) for i in eachindex(root) ) for idx in eachindex(root))
 
 # apply the shrinking functions and filter unsuccessful shrinks
 shrunkEls(root) = ifilter((x -> !(any(isempty, x) || all(==(root), x))),
                     ((f(x) for (f,x) in zip(funcs, root)) for funcs in allFuncs(root)))
-
 
 getProd(a, ::Type{<:Tuple}) = a
 getProd(a, ::Type{<:Vector}) = [a...]
@@ -87,6 +116,66 @@ prods(root::T) where T = flatten((getProd(p, T) for p in iproduct(shrunks...)) f
 shrinks(root) = (ifilter(!=(root), prods(root)))
 
 # combine with drops and we got lazy shrinks (～￣▽￣)～
-shrink(rootEl::Vector) = iunique(flatten((drops(rootEl), shrinks(rootEl))))
 # and we can reuse the methods for tuples as well
+"""
+    shrink(::Vector{T}) where T
+
+Shrinks a vector by either dropping an element, or shrinking an element. Does not modify its input.
+
+Shrinks towards the empty vector, `T[]`. The empty vector produces no shrunk values.
+"""
+shrink(rootEl::Vector) = iunique(flatten((drops(rootEl), shrinks(rootEl))))
+
+"""
+    shrink(::Tuple)
+
+Shrinks a tuple by shrinking an element. The resulting tuples are alwas of the same length as the input tuple.
+"""
 shrink(rootEl::Tuple) = iunique(shrinks(rootEl))
+
+#######
+# Dict
+#######
+
+function copyset(dict, k, val)
+    nd = copy(dict)
+    nd[k] = val
+    nd
+end
+
+"""
+    shrink(::AbstractDict)
+
+Shrinks a dictionary by shrinking keys, values and by dropping an entry.
+The empty dictionary doesn't shrink.
+"""
+function shrink(d::T) where T <: AbstractDict
+    # we have LOTS of ways to shrink a dict
+    # - shrink keys
+    # - shrink values
+    # - drop entries
+    ret = T[]
+
+    for k in keys(d)
+        # shrinking value
+        for s in shrink(d[k])
+            nd = copy(d)
+            nd[k] = s
+            push!(ret, nd)
+        end
+
+        # dropping
+        nd = copy(d)
+        delete!(nd, k)
+        pushfirst!(ret, nd) # more likely to be useful
+
+        # shrinking key
+        for nk in shrink(k)
+            nd = copy(nd)
+            nd[nk] = d[k]
+            push!(ret, nd)
+        end
+    end
+
+    return ret
+end
