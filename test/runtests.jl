@@ -32,21 +32,21 @@ function stringsFromTypeToEmpty()
 end
 
 function interleaveFilterInvariant()
-    s = filter(l->length(l)>=5, PropCheck.str(igen(0xa)), true)
+    s = filter(l->length(l)>=5, PropCheck.vector(UInt8, igen(0xa)), true)
     i = interleave(s,s)
     res = check(i) do ((_,s2))
         length(s2)<5
     end
-    @test res == ('\0'^5, '\0'^5)
+    @test res == (zeros(UInt8, 5), zeros(UInt8, 5))
 end
 
 function interleaveMapInvariant()
-    s = map(l -> l*'\0', PropCheck.str(igen(0x2)))
+    s = map(l -> push!(l, 0x0), PropCheck.vector(UInt8, igen(0x2)))
     i = interleave(s,s)
     res = check(i) do ((_,s2))
-        !isempty(s2) && last(s2)!='\0'
+        !isempty(s2) && last(s2)!=0x0
     end
-    @test res == ("\0","\0")
+    @test res == ([0x0],[0x0])
 end
 
 function vectorLengthIsBoundedByRange()
