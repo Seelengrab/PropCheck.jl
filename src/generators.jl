@@ -37,8 +37,9 @@ shrink(w::Word) = map(Word, shrink(w.hi))
 #######################
 
 generate(rng, ::Type{T}) where {T <: Number} = rand(rng, T) # numbers
-generate(rng, ::Type{Bool}) = rand(rng, Bool)
 generate(rng, ::Type{NTuple{N,T}}) where {N,T} = ntuple(_ -> generate(rng, T), N)
+# Ref. https://github.com/JuliaLang/julia/issues/44741#issuecomment-1079083216
+generate(rng, ::Type{String}) = randstring(rng, typemin(Char):"\xf7\xbf\xbf\xbf"[1], 10)
 
 ########################
 # value based generation
