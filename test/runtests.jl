@@ -17,27 +17,71 @@ function numsToZero(T)
     end
 end
 
+function stringsFromTypeToEmpty()
+    @test check(igen(String)) do str
+        shrunks = shrink(str)
+        if isempty(str)
+            isempty(shrunks)
+        else
+            !isempty(str) && all(shrunks) do shr
+                length(shr) < length(str) ||
+                count(Base.splat(!=), zip(str, shr)) == 1
+            end
+        end
+    end
+end
+
+function interleaveFilterInvariant()
+    s = filter(l->length(l)>=5, PropCheck.str(igen(0xa)), true)
+    i = interleave(s,s)
+    res = check(i) do ((_,s2))
+        length(s2)<5
+    end
+    @test res == ('\0'^5, '\0'^5)
+end
+
+function interleaveMapInvariant()
+    s = map(l -> l*'\0', PropCheck.str(igen(0x2)))
+    i = interleave(s,s)
+    res = check(i) do ((_,s2))
+        !isempty(s2) && last(s2)!='\0'
+    end
+    @test res == ("\0","\0")
+end
+
+function vectorLengthIsBoundedByRange()
+    i = PropCheck.vector(igen(5:10), igen(Int8))
+    res = check(i) do v
+        length(v) != 5
+    end
+    @test res == zeros(Int8, 5)
+end
+
 """
 Tests that when a given predicate holds for the parent, it also holds for its subtrees (or at least the first 100).
 """
 function predicateHoldsForSubtrees(p, T)
     g = filter(p, igen(T))
-    toCheck = filter!(!isnothing, [iterate(g) for _ in 1:numTests[]])
-    iszero(length(toCheck)) && @warn "no values to check for $T"
-    all(toCheck) do x
-        all(p ∘ root, Iterators.take(subtrees(first(x)), 100))
+    toCheck = Iterators.filter(!isnothing, Iterators.take(g, numTests[]))
+    checkedValues = false
+    res = all(toCheck) do x
+        checkedValues = true
+        all(p ∘ root, Iterators.take(subtrees(x), 100))
     end
+    checkedValues && res
 end
 
 guaranteeEven(x) = div(x,0x2)*0x2
 
 function mappedGeneratorsObserveProperty(T)
     g = map(guaranteeEven, igen(T))
-    toCheck = filter!(!isnothing, [iterate(g) for _ in 1:numTests[]])
-    iszero(length(toCheck)) && @warn "no values to check for $T"
-    all(toCheck) do x
-        all(iseven ∘ root, Iterators.take(subtrees(first(x)), 100))
+    toCheck = Iterators.filter(!isnothing, Iterators.take(g, numTests[]))
+    checkedValues = false
+    res = all(toCheck) do x
+        checkedValues = true
+        all(iseven ∘ root, Iterators.take(subtrees(x), 100))
     end
+    checkedValues && res
 end
 
 function throwingProperty(x)
@@ -48,7 +92,7 @@ function throwingProperty(x)
     end
 end
 
-const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat), (Float64, Float32, Float16))
+const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
 @testset "All Tests" begin
     @testset "numsToZero" begin
@@ -80,4 +124,10 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat), (Float6
     @testset "throwing properties still shrink" begin
         @test check(throwingProperty, igen(UInt8)) == (0x05, ArgumentError("x not smaller than 5"))
     end
+    @testset stringsFromTypeToEmpty()
+    @testset "interleave preserves invariants" begin
+        @testset interleaveFilterInvariant()
+        @testset interleaveMapInvariant()
+    end
+    @testset vectorLengthIsBoundedByRange()
 end
