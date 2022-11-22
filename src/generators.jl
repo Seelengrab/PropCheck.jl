@@ -30,7 +30,7 @@ end
 generate(rng, w::Word) = Word(rand(rng, 0:w.hi))
 generate(rng, ::Type{Word}) = Word(rand(rng, UInt))
 const mWord(w) = Generator(Word(w))
-shrink(w::Word) = map(Word, shrink(w.hi))
+shrink(w::Word) = Word.(shrink(w.hi))
 
 #######################
 # type based generation
@@ -45,8 +45,4 @@ generate(rng, ::Type{String}) = randstring(rng, typemin(Char):"\xf7\xbf\xbf\xbf"
 # value based generation
 ########################
 
-generate(rng, t::T) where {T <: Unsigned} = rand(zero(T):t) # numbers
-generate(rng, t::T) where {T <: Signed} = rand(-t:t) # numbers
-generate(rng, t::NTuple{N,T}) where {N,T} = ntuple(i -> generate(rng, t[i]), N)
-
-
+generate(rng, t::T) where {T <: Number} = t

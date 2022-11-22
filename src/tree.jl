@@ -19,27 +19,31 @@ function unfold(f, t::T) where {T}
     Tree(t, imap(unfold(f), f(t)))
 end
 
-# recursively shrinks and creates a tree
-shrinkMap(root) = imap(t -> Tree(t, shrinkMap(t)), shrink(root))
+shrinkcat(a::Tuple,c::Tuple) = (a..., c...)
+shrinkcat(a::Tuple,b,c::Tuple) = (a..., b, c...)
+shrinkcat(a::AbstractVector,c::AbstractVector) = cat(a, c, dims=1)
+shrinkcat(a::AbstractVector,b,c::AbstractVector) = cat(a, b, c, dims=1)
 
-function interleave(trees::Union{<:NTuple{N,Tree{T}},Vector{Tree{T}},<:Tuple}) where {T,N}
+function interleave(trees::Vector{Tree{T}}) where {T}
     # the root of interleaved trees is just all individual roots
-    nRoot = map(root, trees)
-    return Tree(nRoot, shrinkMap(nRoot)) # TODO: isn't this just `unfold`?
+    splits = spliterator(trees)
+    shrinks = flatten((shrinkcat(f, s, t) for s in subtrees(mid)) for (f,mid,t) in splits)
+    drops = (shrinkcat(f, t) for (f,_,t) in splits)
+    els = flatten((drops, shrinks))
+    subs = imap(interleave, els)
+    Tree(map(root, trees), subs)
 end
 
-"""
-    filter(p, t::Tree[, trim=false])
+# tuples don't drop an element
+function interleave(trees::NTuple{N, Tree}) where N
+    # the root of interleaved trees is just all individual roots
+    splits = spliterator(trees)
+    shrinks = flatten((shrinkcat(f, s, t) for s in subtrees(mid)) for (f,mid,t) in splits)
+    subs = imap(interleave, shrinks)
+    Tree(map(root, trees), subs)
+end
+interleave(trees::Tree...) = interleave(trees)
 
-Filters `t` lazily such that all elements contained fulfill the predicate `p`, i.e. all elements for which `p` is `false` are removed.
-
-The first-level subtrees produced by the returned tree will have unique roots amongst each other.
-
-`trim` controls whether subtrees are removed completely when the root doesn't
-fulfill the predicate or whether only that root should be skipped, still trying to
-shrink its subtrees. This trades performance (less shrinks to check) for quality
-(fewer/less diverse shrink values tried).
-"""
 function Base.filter(f, t::Tree{T}, trim=false) where {T}
     r = root(t)
     _filter(x) = filter(f, x, trim)

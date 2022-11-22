@@ -32,7 +32,7 @@ function stringsFromTypeToEmpty()
 end
 
 function interleaveFilterInvariant()
-    s = filter(l->length(l)>=5, PropCheck.vector(UInt8, igen(0xa)), true)
+    s = filter(l->length(l)>=5, PropCheck.vector(igen(0xa), igen(UInt8)), true)
     i = interleave(s,s)
     res = check(i) do ((_,s2))
         length(s2)<5
@@ -41,7 +41,7 @@ function interleaveFilterInvariant()
 end
 
 function interleaveMapInvariant()
-    s = map(l -> push!(l, 0x0), PropCheck.vector(UInt8, igen(0x2)))
+    s = map(l -> push!(l, 0x0), PropCheck.vector(igen(0x2), igen(UInt8)))
     i = interleave(s,s)
     res = check(i) do ((_,s2))
         !isempty(s2) && last(s2)!=0x0

@@ -102,3 +102,6 @@ function Base.iterate(s::Shuffle, (els, it))
     end
     return (ret, (els, it))
 end
+
+spliterator(t) = ((@view(t[begin:n-1]), t[n], @view(t[n+1:end])) for n in eachindex(t))
+spliterator(t::Tuple) = ((t[begin:n-1], t[n], t[n+1:end]) for n in eachindex(t))
