@@ -98,7 +98,7 @@ end
 ###########
 
 # drop each index once
-drops(root) = (deleteat!(deepcopy(root), i) for i in eachindex(root) if length(root) > 0)
+drops(root) = (deleteat!(deepcopy(root), i) for i in eachindex(root) if length(root) > 1)
 
 # create all tuples with all identity, except for one place which we shrink
 allFuncs(root) = (( i == idx ? shrink : (x -> [x]) for i in eachindex(root) ) for idx in eachindex(root))
