@@ -7,12 +7,18 @@ Tests the fallback shrinking for numbers to shrink towards zero.
 """
 function numsToZero(T)
     # are there other properties of the shrinkers themselves we can test?
-    check(igen(T)) do x
+    # there are a lot of numbers, so crank up the tests
+    check(igen(T); ntests=10_000) do x
         shrunks = shrink(x)
-        if x == zero(T)
+        if iszero(x) || isnan(x) || isinf(x)
             isempty(shrunks)
         else
-            !isempty(shrunks) && all( y -> zero(T) <= abs(y) < abs(x), shrunks)
+            if !isempty(shrunks)
+                # abs(Int8(-128)) === Int8(-128)
+                x == typemin(x) || all( y -> zero(T) <= abs(y) < abs(x), shrunks)
+            else
+                false
+            end
         end
     end
 end
@@ -92,12 +98,22 @@ function throwingProperty(x)
     end
 end
 
+function floatTear(T, x)
+    x === PropCheck.assemble(T, PropCheck.tear(x)...)
+end
+
 const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
 @testset "All Tests" begin
+    @testset "Tear $T & reassemble" for T in getSubtypes(Base.IEEEFloat)
+        @test check(x -> floatTear(T, x), igen(T))
+        @testset "Special numbers: $x)" for x in (Inf, -Inf, NaN, -0.0, 0.0)
+            @test floatTear(T, T(x))
+        end
+    end
     @testset "numsToZero" begin
         @testset "$T" for T in numTypes
-            @test numsToZero(T) broken=(T == BigInt || T <: AbstractFloat)
+            @test numsToZero(T) broken=(T == BigInt || T == BigFloat)
         end
     end
     @testset "filter predicates hold for shrunk values" begin

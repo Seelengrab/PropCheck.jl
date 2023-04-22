@@ -37,6 +37,9 @@ shrink(w::Word) = Word.(shrink(w.hi))
 #######################
 
 generate(rng, ::Type{T}) where {T <: Number} = rand(rng, T) # numbers
+generate(rng, ::Type{Float16}) = reinterpret(Float16, generate(rng, UInt16))
+generate(rng, ::Type{Float32}) = reinterpret(Float32, generate(rng, UInt32))
+generate(rng, ::Type{Float64}) = reinterpret(Float64, generate(rng, UInt64))
 generate(rng, ::Type{NTuple{N,T}}) where {N,T} = ntuple(_ -> generate(rng, T), N)
 # Ref. https://github.com/JuliaLang/julia/issues/44741#issuecomment-1079083216
 generate(rng, ::Type{String}) = randstring(rng, typemin(Char):"\xf7\xbf\xbf\xbf"[1], 10)

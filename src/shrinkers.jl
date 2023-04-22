@@ -93,6 +93,62 @@ function shrink(s::String)
     return ret
 end
 
+uint(::Type{Float16}) =      UInt16
+uint(::     Float16)  = zero(UInt16)
+uint(::Type{Float32}) =      UInt32
+uint(::     Float32)  = zero(UInt32)
+uint(::Type{Float64}) =      UInt64
+uint(::     Float64)  = zero(UInt64)
+fracsize(::Type{Float16}) = 10
+fracsize(::Type{Float32}) = 23
+fracsize(::Type{Float64}) = 52
+exposize(::Type{Float16}) = 5
+exposize(::Type{Float32}) = 8
+exposize(::Type{Float64}) = 11
+
+function masks(T::DataType)
+    ui = uint(T)
+    signbitmask = one(ui) << (8*sizeof(ui)-1)
+    fracbitmask = (-1 % ui) >> (8*sizeof(ui)-fracsize(T))
+    expobitmask = ((-1 % ui) >> (8*sizeof(ui)-exposize(T))) << fracsize(T)
+    signbitmask, fracbitmask, expobitmask
+end
+
+function assemble(T, sign, expo, frac)
+    ret = (sign << (exposize(T) + fracsize(T))) | (expo << fracsize(T)) | frac
+    return reinterpret(T, ret)
+end
+
+function tear(x::T) where T <: AbstractFloat
+    signbitmask, fracbitmask, expobitmask = masks(T)
+    ur = reinterpret(uint(T), x)
+    s = (ur & signbitmask) >> (exposize(T) + fracsize(T))
+    e = (ur & expobitmask) >>                fracsize(T)
+    f = (ur & fracbitmask) >>                        0x0
+    return (s, e, f)
+end
+
+"""
+    shrink(::T) where T <: AbstractFloat
+
+Shrinks an `AbstractFloat`.
+
+Shrinks towards `iszero(T)`. `Inf`, `NaN` and `zero(T)` produce no shrunk values.
+Positive numbers produce their negative counterparts.
+"""
+function shrink(r::T) where T <: AbstractFloat
+    (isinf(r) || isnan(r) || iszero(r)) && return T[]
+    os,oe,of = tear(r)
+    signbits = shrink(os)
+    expobits = shrink(oe)
+    fracbits = shrink(of)
+    push!(signbits,  os)
+    push!(expobits, oe)
+    push!(fracbits, of)
+    return [ assemble(T, s, e, f) for s in signbits for e in expobits for f in fracbits
+                if !(f == of && e == oe) ]
+end
+
 ###########
 # Vectors & Tuples
 ###########
