@@ -28,9 +28,9 @@ using PropCheck
 # properties have to return a Bool
 lessThan5 = <(5)
 
-# define a generator, using e.g. the convenient `igen`
-# this here defines an integrated generator for UInt8
-gen = igen(UInt8)
+# define a generator, using e.g. the convenient `itype`
+# this here defines an integrated generator for types, like UInt8
+gen = itype(UInt8)
 
 # optionally enable debug printing for output during the shrinking process
 # ENV["JULIA_DEBUG"] = PropCheck
@@ -68,5 +68,5 @@ In no particular order:
 
  * Clean up the printing of test cases (custom testset?)
  * ~~Define more generators for types from Base, e.g. `Char` and `String`~~
- * Improve shrinking for types which already have a generator defined
- * Make it possible to `generate(Union{Int,Float64})`
+ * ~Improve shrinking for types which already have a generator defined~
+ * ~Make it possible to `generate(Union{Int,Float64})`~

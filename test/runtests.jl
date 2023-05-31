@@ -8,7 +8,7 @@ Tests the fallback shrinking for numbers to shrink towards zero.
 function numsToZero(T)
     # are there other properties of the shrinkers themselves we can test?
     # there are a lot of numbers, so crank up the tests
-    check(igen(T); ntests=10_000) do x
+    check(itype(T); ntests=10_000) do x
         shrunks = shrink(x)
         if iszero(x) || isnan(x) || isinf(x)
             isempty(shrunks)
@@ -24,7 +24,7 @@ function numsToZero(T)
 end
 
 function stringsFromTypeToEmpty()
-    @test check(igen(String)) do str
+    @test check(itype(String)) do str
         shrunks = shrink(str)
         if isempty(str)
             isempty(shrunks)
@@ -38,36 +38,33 @@ function stringsFromTypeToEmpty()
 end
 
 function interleaveFilterInvariant()
-    s = filter(l->length(l)>=5, PropCheck.vector(igen(0xa), igen(UInt8)), true)
-    i = interleave(s,s)
-    res = check(i) do ((_,s2))
-        length(s2)<5
+    s = filter(l->length(l)>=5, PropCheck.vector(isample(0:10), itype(UInt8)), true)
+    res = check(s) do s2
+        length(s2) < 5
     end
-    @test res == (zeros(UInt8, 5), zeros(UInt8, 5))
+    @test res == zeros(UInt8, 5)
 end
 
 function interleaveMapInvariant()
-    s = map(l -> push!(l, 0x0), PropCheck.vector(igen(0x2), igen(UInt8)))
-    i = interleave(s,s)
-    res = check(i) do ((_,s2))
-        !isempty(s2) && last(s2)!=0x0
+    s = map(l -> push!(l, 0x0), PropCheck.vector(isample(0:2), itype(UInt8)))
+    res = check(s) do s2
+        !isempty(s2) && last(s2) != 0x0
     end
-    @test res == ([0x0],[0x0])
+    @test res == [0x0]
 end
 
-function vectorLengthIsBoundedByRange()
-    i = PropCheck.vector(igen(5:10), igen(Int8))
-    res = check(i) do v
-        length(v) != 5
+function initialVectorLengthIsBoundedByRange()
+    i = PropCheck.vector(isample(5:10), itype(Int8))
+    @test check(i) do v
+        5 <= length(v) <= 10
     end
-    @test res == zeros(Int8, 5)
 end
 
 """
 Tests that when a given predicate holds for the parent, it also holds for its subtrees (or at least the first 100).
 """
 function predicateHoldsForSubtrees(p, T)
-    g = filter(p, igen(T))
+    g = filter(p, itype(T))
     toCheck = Iterators.filter(!isnothing, Iterators.take(g, numTests[]))
     checkedValues = false
     res = all(toCheck) do x
@@ -80,7 +77,7 @@ end
 guaranteeEven(x) = div(x,0x2)*0x2
 
 function mappedGeneratorsObserveProperty(T)
-    g = map(guaranteeEven, igen(T))
+    g = map(guaranteeEven, itype(T))
     toCheck = Iterators.filter(!isnothing, Iterators.take(g, numTests[]))
     checkedValues = false
     res = all(toCheck) do x
@@ -106,7 +103,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
 @testset "All Tests" begin
     @testset "Tear $T & reassemble" for T in getSubtypes(Base.IEEEFloat)
-        @test check(x -> floatTear(T, x), igen(T))
+        @test check(x -> floatTear(T, x), itype(T))
         @testset "Special numbers: $x)" for x in (Inf, -Inf, NaN, -0.0, 0.0)
             @test floatTear(T, T(x))
         end
@@ -129,21 +126,21 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end
     end
     @testset "random vectors are sorted" begin
-        @test check(issorted, PropCheck.vector(igen(20), igen(UInt8))) == [0x1, 0x0]
+        @test check(issorted, PropCheck.vector(iconst(20), itype(UInt8))) == [0x1, 0x0]
     end
     @testset "all even numbers are less than 5" begin
-        @test check(<(5), filter(iseven, igen(UInt8))) == 0x6
+        @test check(<(5), filter(iseven, itype(UInt8))) == 0x6
     end
     @testset "there are only even numbers" begin
-        @test check(iseven, igen(UInt8)) == 0x1
+        @test check(iseven, itype(UInt8)) == 0x1
     end
     @testset "throwing properties still shrink" begin
-        @test check(throwingProperty, igen(UInt8)) == (0x05, ArgumentError("x not smaller than 5"))
+        @test check(throwingProperty, itype(UInt8)) == (0x05, ArgumentError("x not smaller than 5"))
     end
     @testset stringsFromTypeToEmpty()
     @testset "interleave preserves invariants" begin
         @testset interleaveFilterInvariant()
         @testset interleaveMapInvariant()
     end
-    @testset vectorLengthIsBoundedByRange()
+    @testset initialvectorLengthIsBoundedByRange()
 end
