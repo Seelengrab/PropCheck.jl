@@ -1,5 +1,8 @@
 # Shrinking functions for default data types
 
+####
+# shrink
+#####
 
 """
     shrink(::Bool)
@@ -109,7 +112,7 @@ exposize(::Type{Float64}) = 11
 function masks(T::DataType)
     ui = uint(T)
     signbitmask = one(ui) << (8*sizeof(ui)-1)
-    fracbitmask = (-1 % ui) >> (8*sizeof(ui)-fracsize(T))
+    fracbitmask =  (-1 % ui) >> (8*sizeof(ui)-fracsize(T))
     expobitmask = ((-1 % ui) >> (8*sizeof(ui)-exposize(T))) << fracsize(T)
     signbitmask, fracbitmask, expobitmask
 end
@@ -142,9 +145,11 @@ function shrink(r::T) where T <: AbstractFloat
     signbits = shrink(os)
     expobits = shrink(oe)
     fracbits = shrink(of)
-    push!(signbits,  os)
+    push!(signbits, os)
     push!(expobits, oe)
     push!(fracbits, of)
+    # return all shrunks, only the sign changed
+    # otherwise we get a shrinking loop
     return [ assemble(T, s, e, f) for s in signbits for e in expobits for f in fracbits
                 if !(f == of && e == oe) ]
 end
@@ -152,24 +157,6 @@ end
 ###########
 # Vectors & Tuples
 ###########
-
-# drop each index once
-drops(root) = (deleteat!(deepcopy(root), i) for i in eachindex(root) if length(root) > 1)
-
-# create all tuples with all identity, except for one place which we shrink
-allFuncs(root) = (( i == idx ? shrink : (x -> [x]) for i in eachindex(root) ) for idx in eachindex(root))
-
-# apply the shrinking functions and filter unsuccessful shrinks
-shrunkEls(root) = ifilter((x -> !(any(isempty, x) || all(==(root), x))),
-                    ((f(x) for (f,x) in zip(funcs, root)) for funcs in allFuncs(root)))
-
-getProd(a, ::Type{<:Tuple}) = a
-getProd(a, ::Type{<:Vector}) = [a...]
-# we have a number of shrink results, take the product of all for all shrink combinations
-prods(root::T) where T = flatten((getProd(p, T) for p in iproduct(shrunks...)) for shrunks in shrunkEls(root))
-
-# finally, filter out productions that resulted back in the original root for efficiency
-shrinks(root) = (ifilter(!=(root), prods(root)))
 
 # combine with drops and we got lazy shrinks (～￣▽￣)～
 # and we can reuse the methods for tuples as well
@@ -180,14 +167,14 @@ Shrinks a vector by either dropping an element, or shrinking an element. Does no
 
 Shrinks towards the empty vector, `T[]`. The empty vector produces no shrunk values.
 """
-shrink(rootEl::Vector) = iunique(flatten((drops(rootEl), shrinks(rootEl))))
+shrink(rootEl::Vector) = iunique(flatten((drops(rootEl), shrinks(shrink, rootEl))))
 
 """
     shrink(::Tuple)
 
-Shrinks a tuple by shrinking an element. The resulting tuples are alwas of the same length as the input tuple.
+Shrinks a tuple by shrinking an element. The resulting tuples are always of the same length as the input tuple.
 """
-shrink(rootEl::Tuple) = iunique(shrinks(rootEl))
+shrink(rootEl::Tuple) = iunique(shrinks(shrink, rootEl))
 
 #######
 # Dict
@@ -215,8 +202,7 @@ function shrink(d::T) where T <: AbstractDict
     for k in keys(d)
         # shrinking value
         for s in shrink(d[k])
-            nd = copy(d)
-            nd[k] = s
+            nd = copyset(d, k, s)
             push!(ret, nd)
         end
 
@@ -226,12 +212,81 @@ function shrink(d::T) where T <: AbstractDict
         pushfirst!(ret, nd) # more likely to be useful
 
         # shrinking key
+        val = d[k]
         for nk in shrink(k)
-            nd = copy(nd)
-            nd[nk] = d[k]
+            nd = copyset(nd, nk, val)
             push!(ret, nd)
         end
     end
 
     return ret
 end
+
+######
+# Ranges
+######
+
+"""
+    shrink(::AbstractRange)
+
+Shrinks a range by splitting it in two in the middle. Ranges containing only one element
+or less don't shrink.
+"""
+function shrink(r::T) where T <: AbstractRange
+    ret = T[]
+    length(r) <= 1 && return ret
+    middle = Base.midpoint(firstindex(r), lastindex(r))
+    push!(ret, r[begin:middle])
+    push!(ret, r[middle+1:end])
+    ret
+end
+
+"""
+    shrinkTowards(to::Real) -> (x -> [x])
+
+Constructs a shrinker function that shrinks given values towards `to`.
+"""
+function shrinkTowards(to::Real)
+    function (x::T) where T
+        ret = T[]
+        to == x && return ret
+        diff = div(x, 2) - div(to, 2)
+        while diff != 0
+            pval = x - diff
+            push!(ret, x - diff)
+            diff = div(diff, 2)
+        end
+        (isempty(ret) || first(ret) != to) && pushfirst!(ret, to)
+        return ret
+    end
+end
+
+function shrinkTowards(to::AbstractFloat)
+    function (x::T) where T <: AbstractFloat
+        ret = T[]
+        to == x && return ret
+        diff = x - to
+        while !iszero(diff)
+            diff /= 2.0
+            y = (x - diff)
+            (isnan(y/x) || isinf(y/x)) && break
+            !isempty(ret) && y == last(ret) && break
+            push!(ret, y)
+        end
+        (isempty(ret) || first(ret) != to) && pushfirst!(ret, to)
+        return ret
+    end
+end
+
+shrinkTowards(to::Bool) = function (x::Bool)
+    to == x && return Bool[]
+    !to && x && return [false]
+    to && !x && return Bool[]
+end
+
+"""
+    noshrink(_::T) -> T[]
+
+A shrinker that doesn't shrink its arguments.
+"""
+noshrink(::T) where T = T[]

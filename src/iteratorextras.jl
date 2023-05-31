@@ -33,7 +33,7 @@ Base.IteratorEltype(::Type{UniqueIterator{T,F}}) where {T,F} = Base.IteratorElty
 Base.IteratorSize(::Type{UniqueIterator{T,F}}) where {T,F} = Base.SizeUnknown()
 Base.eltype(::Type{UniqueIterator{T,F}}) where {T,F} = eltype(T)
 
-Base.IteratorEltype(::Type{Base.Generator{T,F}}) where {T <: UniqueIterator, F} = IteratorEltype(T)
+Base.IteratorEltype(::Type{Base.Generator{T,F}}) where {T <: UniqueIterator, F} = Base.IteratorEltype(T)
 Base.eltype(::Type{Base.Generator{T,F}}) where {T <: UniqueIterator, F} = eltype(T)
 
 iunique(itr; by=identity) = UniqueIterator(itr, by)
@@ -103,5 +103,5 @@ function Base.iterate(s::Shuffle, (els, it))
     return (ret, (els, it))
 end
 
-spliterator(t) = ((@view(t[begin:n-1]), t[n], @view(t[n+1:end])) for n in eachindex(t))
+spliterator(t) = ((@view(t[begin:n-1]), t[n], @view(t[n+1:end]),1) for n in eachindex(t))
 spliterator(t::Tuple) = ((t[begin:n-1], t[n], t[n+1:end]) for n in eachindex(t))

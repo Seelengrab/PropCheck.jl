@@ -1,7 +1,7 @@
 using Logging
 
-function check(p, i::Integrated, rng=Random.default_rng())
-    genAs = [ generate(rng, freeze(i)) for _ in 1:numTests[] ]
+function check(p, i::Integrated, rng=Random.default_rng(); ntests::Int=numTests[])
+    genAs = [ generate(rng, freeze(i)) for _ in 1:ntests ]
     res = findCounterexample(p, genAs)
     res === nothing && return true
     @debug res
@@ -43,6 +43,7 @@ function minimize!(log, f, t::Tree{T}, initEx) where {T}
     else
         @info infomsg
     end
+    # TODO: Return a fancy log type here instead of just a vector
     log
 end
 

@@ -1,4 +1,5 @@
 function getSubtypes(T=Any)::Vector{DataType}
+    T isa Union && return getSubUnions!(DataType[], T)
     subs = subtypes(T)
     ret = filter(isconcretetype, subs)
     filter!(isabstracttype, subs)
@@ -12,4 +13,13 @@ function getSubtypes(T=Any)::Vector{DataType}
     end
 
     ret
+end
+
+function getSubUnions!(cache, T)
+    if !(T isa Union)
+        push!(cache, T)
+    else
+        push!(cache, T.a)
+        getSubUnions!(cache, T.b)
+    end
 end

@@ -10,7 +10,7 @@ export Integrated, Generator
 
 # Trees
 export root, subtrees, unfold, interleave
-export igen
+export itype, iconst, isample
 
 """
     shrink(val::T) where T
@@ -23,14 +23,9 @@ Must _never_ return a previously input value, i.e. no value `val` used as input 
 function shrink end
 
 """
-    generate(rng::AbstractRNG, ::T) where T -> T
     generate(rng::AbstractRNG, ::Type{T}) where T -> T
 
-Function to generate a single value of type `T`. Falls back to field inspection, which _will_ generate values for `::Any` typed fields.
-
-A distinction is made between passing in an instance of a type and a type itself. The former is permitted to use the fields of the object
-to steer generation, for example for more fine grained generation, while the latter is supposed to return all possible values the type
-could express. Customizing the `::Type{T}` version is only recommended if you need to enforce invariants of the constructors of your type.
+Function to generate a single value of type `T`. Falls back to constructor inspection, which _will_ generate values for `::Any` typed arguments.
 
 Types that have `rand` defined for them should forward to it here.
 Assumed to return an object of type `T`.
@@ -41,16 +36,56 @@ include("util.jl")
 include("iteratorextras.jl")
 include("config.jl")
 include("generators.jl")
+include("manual.jl")
 include("shrinkers.jl")
 include("tree.jl")
 include("integrated.jl")
 include("checking.jl")
 
 """
-    igen(T)
+    itype(T::Type[, shrink=shrink])
 
-A convenience constructor for creating integrated shrinkers.
+A convenience constructor for creating integrated shrinkers, generating their values from a type.
+
+Trees created by this function will have their elements shrink according to `shrink`.
 """
-igen(x) = (Integrated ∘ Generator)(x)
+itype(::Type{T}, shrink=shrink) where T = Integrated(Generator(T), shrink)
+
+"""
+    iconst(x)
+
+A convenience constructor for creating an integrated shrinker.
+
+Trees created by this do not shrink, and `generate` on the returned `Integrated` will always
+produce `x`.
+"""
+iconst(x) = Integrated(Tree(x))
+
+"""
+    isample(x[, shrink=shrink])
+
+A convenience constructor for creating an integrated shrinker.
+
+Trees created by this shrink according to `shrink`, and `generate` on the returned
+`Integrated` will always produce an element of the collection `x`.
+
+`x` needs to be indexable.
+"""
+function isample(x, shrink=shrink)
+    gen = Generator{eltype(x)}(rng -> rand(rng, x))
+    Integrated(gen, shrink)
+end
+
+"""
+    isample(x::AbstractRange[, shrink=shrinkTowards(first(x))])
+
+A convenience constructor for creating an integrated shrinker.
+
+Trees created by this shrink towards the first element of the range.
+"""
+function isample(x::AbstractRange, shrink=shrinkTowards(first(x)))
+    gen = Generator{eltype(x)}(rng -> rand(rng, x))
+    Integrated(gen, shrink)
+end
 
 end # module

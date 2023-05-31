@@ -19,30 +19,28 @@ function unfold(f, t::T) where {T}
     Tree(t, imap(unfold(f), f(t)))
 end
 
-shrinkcat(a::Tuple,c::Tuple) = (a..., c...)
-shrinkcat(a::Tuple,b,c::Tuple) = (a..., b, c...)
-shrinkcat(a::AbstractVector,c::AbstractVector) = cat(a, c, dims=1)
-shrinkcat(a::AbstractVector,b,c::AbstractVector) = cat(a, b, c, dims=1)
-
-function interleave(trees::Vector{Tree{T}}) where {T}
-    # the root of interleaved trees is just all individual roots
-    splits = spliterator(trees)
-    shrinks = flatten((shrinkcat(f, s, t) for s in subtrees(mid)) for (f,mid,t) in splits)
-    drops = (shrinkcat(f, t) for (f,_,t) in splits)
-    els = flatten((drops, shrinks))
-    subs = imap(interleave, els)
-    Tree(map(root, trees), subs)
+function interleave(funcs::Tree, objs::Tree)
+    f = root(funcs)
+    x = root(objs)
+    shrinkFuncs = (interleave(l_, objs) for l_ in subtrees(funcs))
+    shrinkObjs  = (interleave(funcs, o_) for o_ in subtrees(objs))
+    shrinks = flatten((shrinkFuncs,  shrinkObjs))
+    Tree(f(x), shrinks)
 end
 
-# tuples don't drop an element
-function interleave(trees::NTuple{N, Tree}) where N
-    # the root of interleaved trees is just all individual roots
-    splits = spliterator(trees)
-    shrinks = flatten((shrinkcat(f, s, t) for s in subtrees(mid)) for (f,mid,t) in splits)
-    subs = imap(interleave, shrinks)
-    Tree(map(root, trees), subs)
+function interleave(ts::Vector)
+    r = map(root, ts)
+    ds = (interleave(d) for d in drops(ts))
+    sh = (interleave(s) for s in shrinks(subtrees, ts))
+    subs = iunique(flatten((ds, sh)))
+    Tree(r, subs)
 end
-interleave(trees::Tree...) = interleave(trees)
+
+function interleave(ts::Tuple)
+    r = map(root, ts)
+    sh = (interleave(s) for s in shrinks(subtrees, ts))
+    Tree(r, sh)
+end
 
 function Base.filter(f, t::Tree{T}, trim=false) where {T}
     r = root(t)
