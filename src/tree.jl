@@ -11,7 +11,7 @@ root(t::Tree) = t.root
 subtrees(t::Tree) = t.subtrees
 
 Base.show(io::IO, t::Tree) = print(io, "Tree(", t.root, ')')
-
+Base.convert(::Type{Tree{T}}, t::Tree) where T = map(x -> convert(T, x), t)
 Base.eltype(::Type{<:Tree{T}}) where {T} = T
 
 unfold(f) = Base.Fix1(unfold, f)

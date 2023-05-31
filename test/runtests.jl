@@ -1,6 +1,6 @@
 using Test
 using PropCheck
-using PropCheck: getSubtypes, numTests
+using PropCheck: getSubtypes, numTests, Tree
 
 """
 Tests the fallback shrinking for numbers to shrink towards zero.
@@ -144,6 +144,16 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     end
     @testset initialVectorLengthIsBoundedByRange()
     @testset "`Integrated` can be `collect`ed" begin
-        @test all(x -> x isa PropCheck.Tree{Int}, collect(Iterators.take(itype(Int), 5)))
+        @test all(x -> x isa Tree{Int}, collect(Iterators.take(itype(Int), 5)))
+    end
+    @testset "convert Trees" begin
+        t = map(x -> x % 3, itype(Int8))
+        itr = Iterators.take(t, 5)
+        @test eltype(itr) == Tree{Int8}
+        @test eltype(collect(itr)) == Tree{Int8}
+        t = map(x -> x % 3, itype(Int8), Int)
+        itr = Iterators.take(t, 5)
+        @test eltype(itr) == Tree{Int}
+        @test eltype(collect(itr)) == Tree{Int}
     end
 end

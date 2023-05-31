@@ -241,13 +241,19 @@ function shrink(r::T) where T <: AbstractRange
     ret
 end
 
+#######
+# shrinkTowards
+######
+
 """
-    shrinkTowards(to::Real) -> (x -> [x])
+    shrinkTowards(to::T) -> (x::T -> T[...])
 
 Constructs a shrinker function that shrinks given values towards `to`.
 """
-function shrinkTowards(to::Real)
-    function (x::T) where T
+function shrinkTowards end
+
+function shrinkTowards(to::T) where T <: Union{Char, Real}
+    function (x::T)
         ret = T[]
         to == x && return ret
         diff = div(x, 2) - div(to, 2)
@@ -261,8 +267,8 @@ function shrinkTowards(to::Real)
     end
 end
 
-function shrinkTowards(to::AbstractFloat)
-    function (x::T) where T <: AbstractFloat
+function shrinkTowards(to::T) where T <: AbstractFloat
+    function (x::T)
         ret = T[]
         to == x && return ret
         diff = x - to
