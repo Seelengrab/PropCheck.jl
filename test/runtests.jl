@@ -142,5 +142,8 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         @testset interleaveFilterInvariant()
         @testset interleaveMapInvariant()
     end
-    @testset initialvectorLengthIsBoundedByRange()
+    @testset initialVectorLengthIsBoundedByRange()
+    @testset "`Integrated` can be `collect`ed" begin
+        @test all(x -> x isa PropCheck.Tree{Int}, collect(Iterators.take(itype(Int), 5)))
+    end
 end

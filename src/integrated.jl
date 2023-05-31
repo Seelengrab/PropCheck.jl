@@ -58,7 +58,7 @@ function PropCheck.map(f, gen::Integrated{T,F}, mapType::Type{_T}=eltype(gen)) w
     function genF(rng)
         map(f, generate(rng, freeze(gen)))
     end
-    dependent(Generator{Tree{_T}}(genF))
+    dependent(Generator{_T}(genF))
 end
 
 # we are Applicative with this
