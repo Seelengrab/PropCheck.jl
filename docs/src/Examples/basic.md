@@ -46,7 +46,7 @@ let's define a simple generator that just draws some random numbers:
 ```jldoctest example_add; output = false, filter = r"Integrated\{.+\}\(.+\)"
 using PropCheck
 
-gen = PropCheck.igen(Int)
+gen = PropCheck.itype(Int)
 # output
 Integrated{PropCheck.Tree{Int64}, PropCheck.var"#gen#36"{Generator{Int64, PropCheck.var"#5#6"{Int64}}}}(PropCheck.var"#gen#36"{Generator{Int64, PropCheck.var"#5#6"{Int64}}}(Generator{Int64, PropCheck.var"#5#6"{Int64}}(PropCheck.var"#5#6"{Int64}())))
 ```
@@ -81,14 +81,14 @@ the smallest counterexample. See how `PropCheck` shrinks a counterexample using 
 ```@example tuple
 ENV["JULIA_DEBUG"] = PropCheck # to enable the debug printing of intermediate shrinking values
 
-check(prop, PropCheck.tuple(igen(0x3), igen(Int8)))
+check(prop, PropCheck.tuple(iconst(0x3), itype(Int8)))
 nothing # hide
 ```
 
 And its return value:
 
 ```@example tuple
-check(prop, PropCheck.tuple(igen(0x3), igen(Int8))) # hide
+check(prop, PropCheck.tuple(iconst(0x3), itype(Int8))) # hide
 ```
 
 PropCheck.jl successfully reduced the first failing test case to one where no elements can be shrunk further without making the test pass,
@@ -109,7 +109,7 @@ You may notice that the tuple is always of size 3, never smaller - the reasoning
 While it is possible to generate tuples with a generated size as well (notice that we're passing in a range now instead of a raw number):
 
 ```julia-repl
-julia> t = PropCheck.tuple(igen(0x0:0x5), igen(Int8));
+julia> t = PropCheck.tuple(isample(0x0:0x5), itype(Int8));
 
 julia> generate(t)
 Tree(())
@@ -132,9 +132,9 @@ ENV["JULIA_DEBUG"] = "" # to prevent spamming in docs
 
 using Test
 @testset "Addition" begin
-    @test check(Base.splat(commutative), PropCheck.tuple(igen(0x2), igen(Int8)))
-    @test check(Base.splat(associative), PropCheck.tuple(igen(0x3), igen(Int8)))
-    @test check(identity_add, igen(Int8))
+    @test check(Base.splat(commutative), PropCheck.tuple(iconst(0x2), itype(Int8)))
+    @test check(Base.splat(associative), PropCheck.tuple(iconst(0x3), itype(Int8)))
+    @test check(identity_add, itype(Int8))
 end
 # output
 Test Summary: | Pass  Total  Time
@@ -157,7 +157,7 @@ statistical process and as such we can only gain _confidence_ that our code is c
 Similar to tuples, there is also `PropCheck.vector(n, gen)` to get a generator which generates `Vector`s of `3` elements:
 
 ```jldoctest examplevec; output = false, filter = r"Integrated\{.+\}\(.+\)"
-vec = PropCheck.vector(igen(3), PropCheck.igen(Int8))
+vec = PropCheck.vector(iconst(3), itype(Int8))
 # output
 Integrated{Vector{Int8}, PropCheck.var"#genF#43"{Int64, Integrated{PropCheck.Tree{Int8}, PropCheck.var"#gen#36"{Generator{Int8, PropCheck.var"#5#6"{Int8}}}}}}(PropCheck.var"#genF#43"{Int64, Integrated{PropCheck.Tree{Int8}, PropCheck.var"#gen#36"{Generator{Int8, PropCheck.var"#5#6"{Int8}}}}}(3, Integrated{PropCheck.Tree{Int8}, PropCheck.var"#gen#36"{Generator{Int8, PropCheck.var"#5#6"{Int8}}}}(PropCheck.var"#gen#36"{Generator{Int8, PropCheck.var"#5#6"{Int8}}}(Generator{Int8, PropCheck.var"#5#6"{Int8}}(PropCheck.var"#5#6"{Int8}())))))
 ```
@@ -218,7 +218,7 @@ element `5`. This requires a complication though - both the length of the vector
 from the type, we don't have information about the length of the `Vector`, so we have to make `PropCheck` aware of that information by creating a
 custom, chained generator (also called dependent, because the endresult depends on more than one generated input).
 
-You might wonder why `Propcheck.vector` and `PropCheck.tuple` are required in the first place. Can't we just do `igen(Vector{Int8})`?
+You might wonder why `Propcheck.vector` and `PropCheck.tuple` are required in the first place. Can't we just do `itype(Vector{Int8})`?
 Well, yes we could, but we have to both generate a length, as well as each element. Trouble is, only generating the length would only
 allow us to shrink the length, while only generating elements would prevent us from shrinking the length. So the generation of elements also
 depends on the _generated_ length. During shrinking, we have to make a choice: Do we start shrinking the length of the array first,

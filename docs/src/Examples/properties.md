@@ -20,11 +20,11 @@ Now suppose we want to test these possibilities seperately - how do we get a gen
 PropCheck.jl provides a few facilities for this, simplest of all are `filter` and `map`:
 
 ```@example even_numbers
-even_nums_filt = filter(iseven, igen(Int8))
+even_nums_filt = filter(iseven, itype(Int8))
 [ t for t in Iterators.take(even_nums_filt, 5) ]
 ```
 ```@example even_numbers
-triple_nums = map(x -> x % 3, igen(Int8))
+triple_nums = map(x -> x % 3, itype(Int8))
 # due to the nature of random generation, there may not be a Tree(2) here
 [ t for t in Iterators.take(triple_nums, 5) ]
 ```
@@ -50,7 +50,7 @@ function myfunc_prop(x)
     myfunc(x) == "odd!"
 end
 
-even_nums_map = map(x -> div(2*x, 2), igen(Int8))
+even_nums_map = map(x -> div(2*x, 2), itype(Int8))
 check(myfunc_prop, even_nums_filt)
 ```
 ```@example even_numbers
@@ -61,11 +61,11 @@ Both checks sucessfully shrunk their failing testcases to the smallest even numb
 If we input odd numbers instead, the test passes:
 
 ```@example even_numbers
-odd_numbers_filt = filter(isodd, igen(Int8))
+odd_numbers_filt = filter(isodd, itype(Int8))
 check(myfunc_prop, odd_numbers_filt)
 ```
 ```@example even_numbers
-odd_numbers_map = map(x -> x + iseven(x), igen(Int8))
+odd_numbers_map = map(x -> x + iseven(x), itype(Int8))
 check(myfunc_prop, odd_numbers_map)
 ```
 
@@ -93,17 +93,17 @@ end
 First, we're going to need a custom generator for our grades:
 
 ```@example student
-grade = map(Base.splat(Pair), PropCheck.interleave(igen(String), igen(0:100))) # random subject, with points in 0:100
-gradegen = map(Base.splat(Dict), PropCheck.tuple(igen(1:10), grade))
+grade = map(Base.splat(Pair), PropCheck.interleave(itype(String), isample(0:100))) # random subject, with points in 0:100
+gradegen = map(Base.splat(Dict), PropCheck.tuple(isample(1:10), grade))
 ```
 
 !!! info "Different ranges"
-	`igen(2:10)` gives us an integrated shrinker producing elements in the range `2:10`. They'll shrink towards `2`.
+	`isample(2:10, PropCheck.shrinkTowards(2))` gives us an integrated shrinker producing elements in the range `2:10`. They'll shrink towards `2`.
 
 Now to our student:
 
 ```@example student
-students = map(Base.splat(Student), PropCheck.interleave(igen(String), igen(Int), gradegen))
+students = map(Base.splat(Student), PropCheck.interleave(itype(String), itype(Int), gradegen))
 check(passes, students)
 ```
 
@@ -121,11 +121,11 @@ Let's say now that we expect our students to be between `10-18` years old, have 
 letters and having between 5 and 10 subjects of `5-15` lowercase ASCII letters. We could build them like this:
 
 ```@example student
-subj_name = PropCheck.str(igen(5:15), igen('a':'z'))
-grade = map(Base.splat(Pair), PropCheck.interleave(subj_name, igen(0:100))) # random subject, with points in 0:100
-gradegen = map(Base.splat(Dict), PropCheck.tuple(igen(5:10), grade))
-stud_name = PropCheck.str(igen(5:20), igen('a':'z')) # we don't want names shorter than 5 characters
-stud_age = igen(10:18) # our youngest student can only be 10 years old
+subj_name = PropCheck.str(isample(5:15), isample('a':'z'))
+grade = map(Base.splat(Pair), PropCheck.interleave(subj_name, isample(0:100))) # random subject, with points in 0:100
+gradegen = map(Base.splat(Dict), PropCheck.tuple(isample(5:10), grade))
+stud_name = PropCheck.str(isample(5:20), isample('a':'z')) # we don't want names shorter than 5 characters
+stud_age = isample(10:18) # our youngest student can only be 10 years old
 students = map(Base.splat(Student), PropCheck.interleave(stud_name, stud_age, gradegen))
 [ s for s in Iterators.take(students, 5) ]
 ```
