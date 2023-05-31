@@ -122,7 +122,7 @@ function arrayAux(genLen::I, genA::Integrated{T}) where {T, I}
     Generator{Array{Tree{T}, N} where N}(genF)
 end
 
-array(genSize::Integrated{Tree{T}}, genA) where T <: Integer = array(PropCheck.tuple(igen(0x1), genSize), genA)
+array(genSize::Integrated{Tree{T}}, genA) where T <: Integer = array(PropCheck.tuple(iconst(0x1), genSize), genA)
 function array(genSize::Integrated{Tree{TP}}, genA::Integrated{T,F}) where {T,F, TP <: NTuple}
     function genF(rng)
         treeArr = generate(rng, arrayAux(genSize, genA))
@@ -157,6 +157,6 @@ Generates a string using the given `genLen` as a generator for the length.
 The default alphabet is `typemin(Char):"\xf7\xbf\xbf\xbf"[1]`, which is all
 representable `Char` values. 
 """
-function str(genLen, alphabet::Integrated=igen(typemin(Char):"\xf7\xbf\xbf\xbf"[1]))
+function str(genLen, alphabet::Integrated=isample(typemin(Char):"\xf7\xbf\xbf\xbf"[1]))
     map(join, vector(genLen, alphabet))
 end
