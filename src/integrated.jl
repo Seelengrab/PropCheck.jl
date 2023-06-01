@@ -54,13 +54,13 @@ dependent(g::Generator{Tree{T},F}) where {T,F} = Integrated{Tree{T},F}(g.gen)
 
 Maps `f` lazily over all elements in `i`, producing a new tree.
 """
-function PropCheck.map(f, gen::Integrated{T,F}, mapType::Type{Tree{_T}}=eltype(gen)) where {T,F,_T}
+function PropCheck.map(f, gen::Integrated{Tree{T},F}) where {T,F}
+    mapType = integratorType(Union{Base.return_types(f, (T,))...})
     function genF(rng)
         map(f, generate(rng, freeze(gen)))
     end
     dependent(Generator{mapType}(genF))
 end
-PropCheck.map(f, gen::Integrated, mapType::Type{T}) where {T} = map(f,  gen, Tree{T})
 
 # we are Applicative with this
 function PropCheck.map(funcs::Integrated{Tree{F}}, gen::Integrated{Tree{T}}) where {T,F}

@@ -146,14 +146,11 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     @testset "`Integrated` can be `collect`ed" begin
         @test all(x -> x isa Tree{Int}, collect(Iterators.take(itype(Int), 5)))
     end
-    @testset "convert Trees" begin
-        t = map(x -> x % 3, itype(Int8))
+    @testset "convert Trees: $T" for (f,T) in (((x -> x % 0x3), Int8),
+                                               ((x -> x %   3), Int))
+        t = map(f, itype(Int8))
         itr = Iterators.take(t, 5)
-        @test eltype(itr) == Tree{Int8}
-        @test eltype(collect(itr)) == Tree{Int8}
-        t = map(x -> x % 3, itype(Int8), Int)
-        itr = Iterators.take(t, 5)
-        @test eltype(itr) == Tree{Int}
-        @test eltype(collect(itr)) == Tree{Int}
+        @test eltype(itr) == Tree{T}
+        @test eltype(collect(itr)) == Tree{T}
     end
 end
