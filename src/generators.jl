@@ -25,10 +25,11 @@ Base.IteratorEltype(::Type{<:Generator}) = Base.HasEltype()
 Base.IteratorSize(::Type{<:Generator}) = Base.SizeUnknown()
 Base.eltype(::Type{Generator{T,F}}) where {T,F} = T
 
-generate(rng, g::Generator) = g.gen(rng)
+generate(rng, g::Generator) = generate(rng, g.gen)
 
 # fallback generator if no RNG is passed in
 generate(x) = generate(Random.default_rng(), x)
+generate(rng, f::Function) = f(rng)
 
 struct Word
     hi::UInt

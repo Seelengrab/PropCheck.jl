@@ -252,11 +252,13 @@ Constructs a shrinker function that shrinks given values towards `to`.
 """
 function shrinkTowards end
 
+half(x::Real) = div(x, 0x2)
+half(x::Char) = Char(half(Int32(x)))
 function shrinkTowards(to::T) where T <: Union{Char, Real}
     function (x::T)
         ret = T[]
         to == x && return ret
-        diff = div(x, 2) - div(to, 2)
+        diff = half(x) - half(to)
         while diff != 0
             pval = x - diff
             push!(ret, x - diff)

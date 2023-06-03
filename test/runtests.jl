@@ -101,7 +101,7 @@ end
 
 const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
-@testset "All Tests" begin
+@time @testset "All Tests" begin
     @testset "Tear $T & reassemble" for T in getSubtypes(Base.IEEEFloat)
         @test check(x -> floatTear(T, x), itype(T))
         @testset "Special numbers: $x)" for x in (Inf, -Inf, NaN, -0.0, 0.0)
@@ -126,7 +126,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end
     end
     @testset "random vectors are sorted" begin
-        @test check(issorted, PropCheck.vector(iconst(20), itype(UInt8))) == [0x1, 0x0]
+        @test check(issorted, PropCheck.vector(isample(0:10), itype(UInt8))) == [0x1, 0x0]
     end
     @testset "all even numbers are less than 5" begin
         @test check(<(5), filter(iseven, itype(UInt8))) == 0x6
@@ -152,5 +152,29 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         itr = Iterators.take(t, 5)
         @test eltype(itr) == Tree{T}
         @test eltype(collect(itr)) == Tree{T}
+    end
+    @testset "type unstable constructors" begin
+        grade = map(Base.splat(Pair), PropCheck.interleave(itype(String), isample(0:100)))
+        # it's type unstable because the empty dispatch returns `Dict{Any,Any}`!
+        # I'd love to propagate the lowerbound of `1` to make this type stable, but that is hard.
+        # maybe that needs dependent types?
+        gradegen = map(Base.splat(Dict), PropCheck.tuple(isample(0:10), grade))
+        @test eltype(gradegen) == Union{PropCheck.Tree{Dict{Any, Any}}, PropCheck.Tree{Dict{String, Int64}}}
+    end
+    @testset "$f preserves invariants" for f in (PropCheck.str, PropCheck.vector)
+        # 3 hex characters is plenty - this is already 3^11 == 177147 possible strings
+        # of couse, it would be better to generate some variations, but.. CI time is not fixing
+        # & writing code time ¯\_(ツ)_/¯ Plus, I like to be able to test my code locally in a reasonable time
+        strlen = 3
+        strgen = f(iconst(strlen), isample('a':'f'))
+        work = [generate(strgen)]
+        res = false
+        while !isempty(work)
+            cur = pop!(work)
+            res |= strlen == length(root(cur))
+            !res && (@test root(cur); break)
+            append!(work, subtrees(cur))
+        end
+        @test res
     end
 end

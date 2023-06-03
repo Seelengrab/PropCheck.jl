@@ -14,6 +14,10 @@ Base.show(io::IO, t::Tree) = print(io, "Tree(", t.root, ')')
 
 Base.eltype(::Type{<:Tree{T}}) where {T} = T
 
+Base.:(==)(::Tree, ::Tree) = false
+Base.:(==)(a::Tree{T}, b::Tree{T}) where T = a.root == b.root && a.subtrees == b.subtrees
+Base.hash(t::Tree, h::UInt) = hash(t.subtrees, hash(t.root, h))
+
 unfold(f) = Base.Fix1(unfold, f)
 function unfold(f, t::T) where {T}
     Tree(t, imap(unfold(f), f(t)))

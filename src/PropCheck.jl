@@ -10,7 +10,7 @@ export Integrated, Generator
 
 # Trees
 export root, subtrees, unfold, interleave
-export itype, iconst, isample
+export itype, ival, iconst, isample
 
 """
     shrink(val::T) where T
@@ -52,14 +52,24 @@ Trees created by this function will have their elements shrink according to `shr
 itype(::Type{T}, shrink=shrink) where T = Integrated(Generator(T), shrink)
 
 """
+    ival(x::T[, shrink=shrink])
+
+A convenience constructor for creating integrated shrinkers, generating their values from a type.
+
+Trees created by this function will always initially have `x` at their root, as well as shrink
+according to `shrink`.
+"""
+ival(x::T, shrink=shrink) where T = Integrated(Generator{T}(Returns(x)), shrink)
+
+"""
     iconst(x)
 
 A convenience constructor for creating an integrated shrinker.
 
-Trees created by this do not shrink, and `generate` on the returned `Integrated` will always
+Trees created by this do not shrink, and `generate` on the returned `AbstractIntegrated` will always
 produce `x`.
 """
-iconst(x) = Integrated(Tree(x))
+iconst(x) = IntegratedConst(x)
 
 """
     isample(x[, shrink=shrink])
@@ -81,11 +91,11 @@ end
 
 A convenience constructor for creating an integrated shrinker.
 
-Trees created by this shrink towards the first element of the range.
+Trees created by this shrink towards the first element of the range by default.
 """
 function isample(x::AbstractRange, shrink=shrinkTowards(first(x)))
     gen = Generator{eltype(x)}(rng -> rand(rng, x))
-    Integrated(gen, shrink)
+    IntegratedRange(x, gen, shrink)
 end
 
 end # module

@@ -8,6 +8,8 @@ struct UniqueIterator{T,By}
     by::By
     UniqueIterator(itr::T, by::By=identity) where {T,By} = new{T,By}(itr, by)
 end
+Base.:(==)(a::UniqueIterator{T}, b::UniqueIterator{T}) where T = a.itr == b.itr && a.by == b.by
+Base.hash(t::UniqueIterator, h::UInt) = hash(t.by, hash(t.itr, h))
 
 function Base.iterate(itr::UniqueIterator)
     t = iterate(itr.itr)
@@ -64,6 +66,8 @@ function Base.iterate(f::Flatten{T}, state=()) where T
     end
     return convert(T, y[1]), (x[2], x[1], y[2])
 end
+Base.:(==)(a::Flatten, b::Flatten) = a.it == b.it
+Base.hash(t::Flatten, h::UInt) = hash(t.it, h)
 
 struct Shuffle{T}
     itr::T
@@ -72,6 +76,8 @@ struct Shuffle{T}
 end
 Shuffle(v::AbstractArray) = shuffle!(v) # we already have the memory, so shuffle it directly
 
+Base.:(==)(a::Shuffle, b::Shuffle) = a.itr == b.itr && a.cacheSize == b.cacheSize
+Base.hash(t::Shuffle, h::UInt) = hash(t.cacheSize, hash(t.itr, h))
 Base.IteratorEltype(::Shuffle{T}) where T = Base.IteratorEltype(T)
 Base.IteratorSize(::Shuffle{T}) where T = Base.IteratorSize(T)
 Base.eltype(::Shuffle{T}) where T = eltype(T)
