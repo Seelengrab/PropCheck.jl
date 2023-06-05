@@ -2,6 +2,18 @@ using Random: Random
 
 abstract type AbstractIntegrated{T} end
 
+function Base.iterate(g::AbstractIntegrated, rng=default_rng())
+    el = generate(rng, g)
+    el === nothing && return nothing
+    (el, rng)
+end
+Base.IteratorEltype(::Type{<:AbstractIntegrated}) = Base.HasEltype()
+Base.IteratorSize(::Type{<:AbstractIntegrated}) = Base.SizeUnknown()
+
+#######
+# Unassuming Integrated
+#######
+
 struct Integrated{T,F} <: AbstractIntegrated{T}
     gen::F
 end
@@ -28,13 +40,6 @@ function integratorType(u::Union)
 end
 integratorType(::Type{T}) where T = Tree{T}
 
-function Base.iterate(g::Integrated, rng=default_rng())
-    el = generate(rng, g)
-    el === nothing && return nothing
-    (el, rng)
-end
-Base.IteratorEltype(::Type{<:Integrated}) = Base.HasEltype()
-Base.IteratorSize(::Type{<:Integrated}) = Base.SizeUnknown()
 Base.eltype(::Type{Integrated{T,F}}) where {T,F} = T
 
 generate(rng, i::Integrated{T}) where T = i.gen(rng)
@@ -64,9 +69,6 @@ struct IntegratedRange{T,R,G,F} <: ExtentIntegrated{T}
     end
 end
 generate(rng, i::IntegratedRange) = generate(rng, i.gen)
-Base.iterate(g::IntegratedRange, rng=default_rng()) = iterate(g.gen, rng)
-Base.IteratorEltype(::Type{<:IntegratedRange}) = Base.HasEltype()
-Base.IteratorSize(::Type{<:IntegratedRange}) = Base.SizeUnknown()
 Base.eltype(::Type{<:IntegratedRange{T}}) where T = T
 extent(ir::IntegratedRange) = (first(ir.bounds), last(ir.bounds))
 
@@ -85,9 +87,6 @@ struct IntegratedConst{T,R,G} <: ExtentIntegrated{T}
     end
 end
 generate(rng, i::IntegratedConst) = generate(rng, i.gen)
-Base.iterate(g::IntegratedConst, rng=default_rng()) = iterate(g.gen, rng)
-Base.IteratorEltype(::Type{<:IntegratedConst}) = Base.HasEltype()
-Base.IteratorSize(::Type{<:IntegratedConst}) = Base.SizeUnknown()
 Base.eltype(::Type{<:IntegratedConst{T}}) where T = T
 extent(ir::IntegratedConst) = (ir.bounds, ir.bounds)
 
