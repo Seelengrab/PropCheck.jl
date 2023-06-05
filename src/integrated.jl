@@ -114,7 +114,7 @@ end
 
 # we are Applicative with this
 function PropCheck.map(funcs::AbstractIntegrated{Tree{F}}, gen::AbstractIntegrated{Tree{T}}) where {T,F}
-    genF(rng) = interleave(generate(funcs, rng), generate(gen, rng))
+    genF(rng) = interleave(generate(rng, funcs), generate(rng, gen))
     rootF = root(generate(funcs))
     retT = reduce(typejoin, Base.return_types(rootF, (T,)))
     Integrated{Tree{retT}, typeof(genF)}(genF)
