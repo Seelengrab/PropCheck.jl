@@ -18,10 +18,15 @@ Base.:(==)(::Tree, ::Tree) = false
 Base.:(==)(a::Tree{T}, b::Tree{T}) where T = a.root == b.root && a.subtrees == b.subtrees
 Base.hash(t::Tree, h::UInt) = hash(t.subtrees, hash(t.root, h))
 
-unfold(f) = Base.Fix1(unfold, f)
+"""
+    unfold(f, t)
+
+Unfolds `t` into a `Tree`, by applying `f` to each root to create subtrees.
+"""
 function unfold(f, t::T) where {T}
     Tree(t, imap(unfold(f), f(t)))
 end
+unfold(f) = Base.Fix1(unfold, f)
 
 function interleave(funcs::Tree, objs::Tree)
     f = root(funcs)
