@@ -10,7 +10,7 @@ export Integrated, Generator
 
 # Trees
 export root, subtrees, unfold, interleave
-export itype, ival, iconst, isample
+export itype, ival, iconst, isample, iunique
 
 """
     shrink(val::T) where T
@@ -97,5 +97,15 @@ function isample(x::AbstractRange, shrink=shrinkTowards(first(x)))
     gen = Generator{eltype(x)}(rng -> rand(rng, x))
     IntegratedRange(x, gen, shrink)
 end
+
+"""
+    iunique(x::Vector, shrink=shrink)
+
+A convenience constructor for creating an integrated shrinker.
+
+This shrinker produces all unique values of `x` before producing a value it has produced before.
+The produced trees shrink according to `shrink`.
+"""
+iunique(x::Vector{T}, shrink=shrink) where T = IntegratedUnique(x, shrink)
 
 end # module

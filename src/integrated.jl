@@ -1,4 +1,4 @@
-using Random: Random
+using Random: Random, shuffle
 
 abstract type AbstractIntegrated{T} end
 
@@ -89,6 +89,40 @@ end
 generate(rng, i::IntegratedConst) = generate(rng, i.gen)
 Base.eltype(::Type{<:IntegratedConst{T}}) where T = T
 extent(ir::IntegratedConst) = (ir.bounds, ir.bounds)
+
+"""
+    IntegratedUnique(vec::Vector{T}, shrink::S) where {T,S}
+
+An integrated shrinker, taking a vector `vec`. The shrinker will produce all unique values of `vec`
+in a random order before producing a value it returned before. The values produced by this shrinker
+shrink according to `shrink`.
+"""
+mutable struct IntegratedUnique{T,ElT,S} <: AbstractIntegrated{T}
+    els::Vector{ElT}
+    cache::Vector{ElT}
+    const shrink::S
+
+    function IntegratedUnique(vec::Vector{T}, shrink::S) where {T,S}
+        treeType = integratorType(T)
+        els = shuffle(vec)
+        cache = sizehint!(similar(els, 0), length(els))
+        new{treeType,T,S}(els, cache, shrink)
+    end
+end
+
+function generate(rng, i::IntegratedUnique)
+    el = popfirst!(i.els)
+    push!(i.cache, el)
+    if isempty(i.els)
+        # swap, so we're not wasteful with memory
+        i.els, i.cache = i.cache, i.els
+        shuffle!(rng, i.els)
+    end
+    unfold(Shuffle ∘ i.shrink, el)
+end
+
+Base.eltype(::Type{<:IntegratedUnique{T}}) where T = T
+freeze(i::IntegratedUnique{T}) where {T} = Generator{T}(rng -> generate(rng, i))
 
 ################################################
 # utility for working with integrated generators
