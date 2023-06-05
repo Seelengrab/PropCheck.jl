@@ -54,12 +54,12 @@ itype(::Type{T}, shrink=shrink) where T = Integrated(Generator(T), shrink)
 """
     ival(x::T[, shrink=shrink])
 
-A convenience constructor for creating integrated shrinkers, generating their values from a type.
+A convenience constructor for creating integrated shrinkers, generating their values from a starting value.
 
 Trees created by this function will always initially have `x` at their root, as well as shrink
 according to `shrink`.
 """
-ival(x::T, shrink=shrink) where T = Integrated(Generator{T}(Returns(x)), shrink)
+ival(x::T, shrink=shrink) where T = IntegratedVal(x, shrink)
 
 """
     iconst(x)

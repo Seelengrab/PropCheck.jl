@@ -9,6 +9,7 @@ function Base.iterate(g::AbstractIntegrated, rng=default_rng())
 end
 Base.IteratorEltype(::Type{<:AbstractIntegrated}) = Base.HasEltype()
 Base.IteratorSize(::Type{<:AbstractIntegrated}) = Base.SizeUnknown()
+Base.eltype(::Type{<:AbstractIntegrated{T}}) where T = T
 
 #######
 # Unassuming Integrated
@@ -40,8 +41,6 @@ function integratorType(u::Union)
 end
 integratorType(::Type{T}) where T = Tree{T}
 
-Base.eltype(::Type{Integrated{T,F}}) where {T,F} = T
-
 generate(rng, i::Integrated{T}) where T = i.gen(rng)
 
 """
@@ -69,7 +68,6 @@ struct IntegratedRange{T,R,G,F} <: ExtentIntegrated{T}
     end
 end
 generate(rng, i::IntegratedRange) = generate(rng, i.gen)
-Base.eltype(::Type{<:IntegratedRange{T}}) where T = T
 extent(ir::IntegratedRange) = (first(ir.bounds), last(ir.bounds))
 
 """
@@ -87,7 +85,6 @@ struct IntegratedConst{T,R,G} <: ExtentIntegrated{T}
     end
 end
 generate(rng, i::IntegratedConst) = generate(rng, i.gen)
-Base.eltype(::Type{<:IntegratedConst{T}}) where T = T
 extent(ir::IntegratedConst) = (ir.bounds, ir.bounds)
 
 """
@@ -121,15 +118,47 @@ function generate(rng, i::IntegratedUnique)
     unfold(Shuffle ∘ i.shrink, el)
 end
 
-Base.eltype(::Type{<:IntegratedUnique{T}}) where T = T
 freeze(i::IntegratedUnique{T}) where {T} = Generator{T}(rng -> generate(rng, i))
+
+"""
+    IntegratedVal(val::V, shrink::S) where {V,S}
+
+An integrated shrinker, taking a value `val`. The shrinker will always produce `val`, which
+shrinks according to `shrink`.
+
+If `V <: Number`, shrinking functions given to this must be producing values in
+
+ * `[typemin(V), v]` if `v > zero(V)`
+ * `[v, typemax(V)]` if `v < zero(V)`
+ * no values if `iszero(v)`
+
+This shrinker supports `extent` out of the box if `V <: Number`.
+"""
+struct IntegratedVal{T,V,S} <: ExtentIntegrated{T}
+    val::V
+    shrink::S
+    function IntegratedVal(v::V, s::S) where {V,S}
+        new{Tree{V},V,S}(v, s)
+    end
+end
+
+generate(_, iv::IntegratedVal) = unfold(Shuffle ∘ iv.shrink, iv.val)
+freeze(i::IntegratedVal) = i
+function extent(iv::IntegratedVal{Tree{T}}) where T<:Number
+    iszero(iv.val) && return (zero(T), zero(T))
+    if iv.val < zero(T)
+        return (iv.val, typemax(T))
+    else
+        return (typemin(T), iv.val)
+    end
+end
 
 ################################################
 # utility for working with integrated generators
 ################################################
 
 freeze(i::AbstractIntegrated{T}) where {T} = Generator{T}(i.gen)
-dontShrink(i::AbstractIntegrated{T}) where {T} = Generator{T}(rng -> root(generate(rng, i.gen)))
+dontShrink(i::AbstractIntegrated{T}) where {T} = Generator{T}(rng -> root(generate(rng, i)))
 dependent(g::Generator{T,F}) where {T,F} = Integrated{T,F}(g.gen)
 
 """
@@ -187,7 +216,7 @@ function listAux(genLen::ExtentIntegrated{W}, genA::AbstractIntegrated{T}) where
     Generator{Vector{Tree{T}}}(genF)
 end
 
-function vector(genLen::ExtentIntegrated, genA::AbstractIntegrated{T}) where {T}
+function vector(@nospecialize(genLen::ExtentIntegrated), genA::AbstractIntegrated{T}) where {T}
     function genF(rng)
         while true
             treeVec = generate(rng, listAux(genLen, genA))
