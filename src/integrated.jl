@@ -95,9 +95,6 @@ extent(ir::IntegratedConst) = (ir.bounds, ir.bounds)
 # utility for working with integrated generators
 ################################################
 
-const iBool = Integrated(Manual(Generator(Bool)))
-iWord(hi) = Integrated(mWord(hi))
-
 freeze(i::AbstractIntegrated{T}) where {T} = Generator{T}(i.gen)
 dontShrink(i::AbstractIntegrated{T}) where {T} = Generator{T}(rng -> root(generate(rng, i.gen)))
 dependent(g::Generator{T,F}) where {T,F} = Integrated{T,F}(g.gen)

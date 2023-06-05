@@ -31,14 +31,6 @@ generate(rng, g::Generator) = generate(rng, g.gen)
 generate(x) = generate(Random.default_rng(), x)
 generate(rng, f::Function) = f(rng)
 
-struct Word
-    hi::UInt
-end
-generate(rng, w::Word) = Word(rand(rng, 0:w.hi))
-generate(rng, ::Type{Word}) = Word(rand(rng, UInt))
-const mWord(w) = Manual(Generator(Word(w)))
-shrink(w::Word) = Word.(shrink(w.hi))
-
 #######################
 # type based generation
 #######################
