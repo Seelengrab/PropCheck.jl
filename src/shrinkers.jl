@@ -167,14 +167,14 @@ Shrinks a vector by either dropping an element, or shrinking an element. Does no
 
 Shrinks towards the empty vector, `T[]`. The empty vector produces no shrunk values.
 """
-shrink(rootEl::Vector) = iunique(flatten((drops(rootEl), shrinks(shrink, rootEl))))
+shrink(rootEl::Vector) = uniqueitr(flatten((drops(rootEl), shrinks(shrink, rootEl))))
 
 """
     shrink(::Tuple)
 
 Shrinks a tuple by shrinking an element. The resulting tuples are always of the same length as the input tuple.
 """
-shrink(rootEl::Tuple) = iunique(shrinks(shrink, rootEl))
+shrink(rootEl::Tuple) = uniqueitr(shrinks(shrink, rootEl))
 
 #######
 # Dict

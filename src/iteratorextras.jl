@@ -38,8 +38,8 @@ Base.eltype(::Type{UniqueIterator{T,F}}) where {T,F} = eltype(T)
 Base.IteratorEltype(::Type{Base.Generator{T,F}}) where {T <: UniqueIterator, F} = Base.IteratorEltype(T)
 Base.eltype(::Type{Base.Generator{T,F}}) where {T <: UniqueIterator, F} = eltype(T)
 
-iunique(itr; by=identity) = UniqueIterator(itr, by)
-iunique(itr, itr2, itrs...; by=identity) = UniqueIterator(Flatten{eltype(itr)}(itr, itr2, itrs...), by)
+uniqueitr(itr; by=identity) = UniqueIterator(itr, by)
+uniqueitr(itr, itr2, itrs...; by=identity) = UniqueIterator(Flatten{eltype(itr)}(itr, itr2, itrs...), by)
 
 """
 Flatten with inferrable `eltype`. Requires the given iterators to have the same `eltype`.

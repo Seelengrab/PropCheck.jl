@@ -25,7 +25,7 @@ shrinks(elShrink, root) = (ifilter(!=(root), prods(elShrink, root)))
 
 function mList(genLen::Manual{I}, genA::Manual{T}) where {T, I <: Union{Base.BitInteger,Bool}}
     gen(rng) = T[ generate(rng, genA)::T for _ in 1:generate(rng, genLen)::I ]
-    shrink(a) = iunique(flatten((drops(a), shrinks(genA.shrink, a))))
+    shrink(a) = uniqueitr(flatten((drops(a), shrinks(genA.shrink, a))))
     Manual(Generator{Vector{T}}(gen), shrink)
 end
 

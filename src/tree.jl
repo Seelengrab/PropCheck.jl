@@ -36,7 +36,7 @@ function interleave(ts::Vector)
     r = map(root, ts)
     ds = (interleave(d) for d in drops(ts))
     sh = (interleave(s) for s in shrinks(subtrees, ts))
-    subs = iunique(flatten((ds, sh)))
+    subs = uniqueitr(flatten((ds, sh)))
     Tree(r, subs)
 end
 
@@ -68,6 +68,6 @@ Base.map(f, t::Tree) = imap(f, t)
 _map(f) = Base.Fix1(imap, f)
 function Base.Iterators.map(f, t::Tree{T}) where {T}
     r = root(t)
-    lazySubtrees = iunique(imap(_map(f), subtrees(t)))
+    lazySubtrees = uniqueitr(imap(_map(f), subtrees(t)))
     return Tree(f(r), lazySubtrees)
 end
