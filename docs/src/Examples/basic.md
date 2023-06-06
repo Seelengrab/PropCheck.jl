@@ -86,18 +86,18 @@ We've still got three more properties to test, taking two or three arguments eac
 Since we know the number of arguments to each function, we can pair a integrated shrinker for the appropriate
 arguments with splatting those arguments into the property with `Base.splat` to test them:
 
-```jldoctest example_add; filter = r"(Test.DefaultTestSet.+)|(Addition\s+\|\s+4\s+4\s+\d\.\ds)|#"
+```@example example_add
 using Test
+try # hide
 @testset "Addition" begin
     @test check(identity_add,       itype(UInt))
     @test check(splat(commutative), itype(Tuple{UInt, UInt}))
     @test check(splat(successor),   itype(Tuple{UInt, UInt}))
     @test check(splat(associative), itype(Tuple{UInt, UInt, UInt}))
 end
-# output
-Test Summary: | Pass  Total  Time
-Addition      |    4      4  0.3s
-Test.DefaultTestSet("Addition", Any[], 4, false, false, true, 1.652808363118544e9, 1.652808363384581e9, false, "")
+catch # hide
+end # hide
+nothing # hide
 ```
 
 Be aware that while all checks pass, we _do not have a guarantee that our code is correct for all cases_.
