@@ -1,8 +1,8 @@
 using Logging
 
-function check(p, i::Integrated, rng=Random.default_rng(); ntests::Int=numTests[])
+function check(p, i::Integrated, rng=Random.default_rng(); ntests::Int=numTests[], show_initial=true)
     genAs = [ generate(rng, freeze(i)) for _ in 1:ntests ]
-    res = findCounterexample(p, genAs)
+    res = findCounterexample(p, genAs; show_initial)
     res === nothing && return true
     @debug res
     entry = last(res)
@@ -47,7 +47,7 @@ function minimize!(log, f, t::Tree{T}, initEx) where {T}
     log
 end
 
-function findCounterexample(f, trees::Vector{<:Tree})
+function findCounterexample(f, trees::Vector{<:Tree}; show_initial=true)
     function _f(tree)
         try
             ((!f ∘ root)(tree), tree, nothing)
@@ -59,8 +59,13 @@ function findCounterexample(f, trees::Vector{<:Tree})
     checkedTrees = map(_f, trees)
     filter!(first, checkedTrees)
     isempty(checkedTrees) && return nothing
-    @info "Found counterexample for '$f', beginning shrinking..."
-    _, initTree, initEx = first(checkedTrees)
+    initialCE = first(checkedTrees)
+    if show_initial
+        @info "Found counterexample for '$f', beginning shrinking..."  Counterexample=root(initialCE[2])
+    else
+        @info "Found counterexample for '$f', beginning shrinking..."
+    end
+    _, initTree, initEx = initialCE
     log = CheckEntry{eltype(initTree)}[]
     minimize!(log, _f, initTree, initEx)
 end
