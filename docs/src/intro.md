@@ -17,7 +17,7 @@ Now that I have your attention, let's get started:
 
 ## What is Property Based Testing?
 
-Property Based Testing is the idea of checking the correctness of a function or algorithm against a number of desired properties that function
+Property Based Testing is the idea of checking the correctness of a function, algorithm or calculation against a number of desired properties that function
 should observe. Consider this function:
 
 ```julia
@@ -53,6 +53,7 @@ a few major drawbacks:
 
  1) Being somewhat certain that we cover the function completely quickly becomes infeasible
  2) We have no control over the numbers being generated
+ 3) We can't reuse the way we generate these numbers; expanding a testsuite like this leads to a lot of boilerplate and repetition
 
 On its own, just `foo_prop` is already property based testing - we take some expected input and check it against the expected output/behavior.
 However, on 64-bit systems, `Int` has a value in the interval `[-9223372036854775808, 9223372036854775807]`, which is one of $$2^{64}$$ different

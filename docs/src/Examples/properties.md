@@ -1,75 +1,9 @@
 # Complex generation
 
-I've mentioned in the last section how we need `tuple` and `vector` to generate tuples and vectors of values respectively. In this chapter
-we'll see why that is and how we can build our own custom integrated shrinkers.
+I've mentioned in the last section how we need `tuple` and `vector` to generate tuples and vectors of values respectively.
+In this chapter, we'll use these to build a slightly more complex example.
 
-Let's say we have a function that expects to only be passed even numbers, else we error:
-
-```@example even_numbers
-using PropCheck # hide
-
-function myfunc(x)
-    # x should be odd
-    isodd(x) || error("even!")
-    return "odd!"
-end
-```
-
-Now suppose we want to test these possibilities seperately - how do we get a generator that only produces even and odd values respectively?
-
-PropCheck.jl provides a few facilities for this, simplest of all are `filter` and `map`:
-
-```@example even_numbers
-even_nums_filt = filter(iseven, itype(Int8))
-[ t for t in Iterators.take(even_nums_filt, 5) ]
-```
-```@example even_numbers
-triple_nums = map(x -> x % 3, itype(Int8))
-# due to the nature of random generation, there may not be a Tree(2) here
-[ t for t in Iterators.take(triple_nums, 5) ]
-```
-
-Both `map` and `filter` on an integrated generator return another integrated generator - everything is handled lazily.
-
-Keen eyes notice that we can iterate over integrated generators, which gives us a [`PropCheck.Tree`](@ref). Instead of
-expanding a full tree of possible subsequent shrink values, we get a lazily computed representation of all possible values.
-This is crucial for performance, as well as to keep the invariants of which objects we want to generate and what initial
-properties we want to have for them.
-
-One important difference between `filter` and `map` is the amount of valid test cases we generate. If we're unlucky, `filter`
-may filter out too many potential inputs, leaving us with nothing to test. In contrast, `map` will always give us a valid
-object by transforming a (potentially invalid) input into a valid one. In general, `filter` should be preferred if there's no
-known transform from an invalid input to a valid one and the majority of inputs is valid in the first place. `filter` also
-has the additional downside of introducing a potential type instability, since it's possible that no input was valid, thus
-returning `nothing`.
-
-For the function above, both approaches can work:
-
-```@example even_numbers
-function myfunc_prop(x)
-    myfunc(x) == "odd!"
-end
-
-even_nums_map = map(x -> div(2*x, 2), itype(Int8))
-check(myfunc_prop, even_nums_filt)
-```
-```@example even_numbers
-check(myfunc_prop, even_nums_map)
-```
-
-Both checks sucessfully shrunk their failing testcases to the smallest even number that throws the exception - `0`!
-If we input odd numbers instead, the test passes:
-
-```@example even_numbers
-odd_numbers_filt = filter(isodd, itype(Int8))
-check(myfunc_prop, odd_numbers_filt)
-```
-```@example even_numbers
-odd_numbers_map = map(x -> x + iseven(x), itype(Int8))
-check(myfunc_prop, odd_numbers_map)
-```
-
-Now let's take a look at a more complicated object and an associated function, like this one for example:
+Let's take a look at a more complicated object and an associated function, like this one for example:
 
 ```@example student
 using PropCheck # hide
@@ -94,7 +28,7 @@ First, we're going to need a custom generator for our grades:
 
 ```@example student
 grade = map(Base.splat(Pair), PropCheck.interleave(itype(String), isample(0:100))) # random subject, with points in 0:100
-gradegen = map(Base.splat(Dict), PropCheck.tuple(isample(1:10), grade))
+gradegen = map(Base.splat(Dict{String,Int}), PropCheck.tuple(isample(1:10), grade))
 ```
 
 !!! info "Different ranges"
@@ -108,13 +42,13 @@ check(passes, students)
 ```
 
 And we can see that just generic shrinking produced the minimal student that doesn't pass. A nameless, ageless student
-who got no points on two subjects. Note that due to us using a dictionary (which forces unique keys), the two subjects
+who received no points on two subjects. Note that due to us using a dictionary (which forces unique keys), the two subjects
 have different names!
 
 PropCheck tries to be fast when it can, so this reduction barely took any time:
 
 ```@example student
-pairs(@timed check(passes, students))
+pairs(@timed @time check(passes, students))
 ```
 
 Let's say now that we expect our students to be between `10-18` years old, have a name consisting of `5-20` lowercase ASCII
@@ -123,11 +57,11 @@ letters and having between 5 and 10 subjects of `5-15` lowercase ASCII letters. 
 ```@example student
 subj_name = PropCheck.str(isample(5:15), isample('a':'z'))
 grade = map(Base.splat(Pair), PropCheck.interleave(subj_name, isample(0:100))) # random subject, with points in 0:100
-gradegen = map(Base.splat(Dict), PropCheck.tuple(isample(5:10), grade))
+gradegen = map(Base.splat(Dict{String,Int}), PropCheck.vector(isample(5:10), grade))
 stud_name = PropCheck.str(isample(5:20), isample('a':'z')) # we don't want names shorter than 5 characters
 stud_age = isample(10:18) # our youngest student can only be 10 years old
 students = map(Base.splat(Student), PropCheck.interleave(stud_name, stud_age, gradegen))
-[ s for s in Iterators.take(students, 5) ]
+collect(Iterators.take(students, 5))
 ```
 
 which will preserve the invariants described during generation when shrinking:
@@ -135,3 +69,47 @@ which will preserve the invariants described during generation when shrinking:
 ```@example student
 check(passes, students)
 ```
+
+The student returned has a name with 5 characters, is 10 years old, has taken two distinct subjects and received 0 points
+in both of them. We can do much better if we modify our generators a bit, at the cost of having a smaller pool of possible tests:
+
+```@example student
+# sample their classes
+subj_name = isample(["Geography", "Mathematics", "English", "Arts & Crafts", "Music", "Science"], PropCheck.noshrink)
+
+# random subject, with points in 0:100
+grade = map(Base.splat(Pair), PropCheck.interleave(subj_name, isample(0:100)))
+
+# generate their grades
+gradegen = map(Base.splat(Dict{String,Int}), PropCheck.vector(isample(5:10), grade))
+
+# give them a name that doesn't vanish
+stud_name = isample(["Alice", "Bob", "Claire", "Devon"], PropCheck.noshrink)
+
+# our youngest student can only be 10 years old
+stud_age = isample(10:18)
+
+# create our students
+students = map(Base.splat(Student), PropCheck.interleave(stud_name, stud_age, gradegen))
+
+# and check that not all students pass
+using Test
+try # hide
+@testset "All students pass" begin
+    @test check(passes, students)
+end
+catch # hide
+end # hide
+```
+
+!!! note "Dictionaries"
+    While this example directly splats a vector into the `Dict{String,Int}` constructor, this is in general
+    not optimal. `Dict` will delete previously set values if a key is duplicated, so it's usually better to
+    generate a list of unique keys first, which is then combined with a seperately generated list of values.
+    In order to generate that list of unique keys, you can use [`iunique`](@ref).
+
+!!! note "Test stdlib and `@test`"
+    Currently, `check` returns the minimized failing testcase, so that `@test` displays that the test has
+    evaluated to a non-Boolean. This is suboptimal and misuses the `@test` macro. In the future, this may
+    be replaced by a `@check` macro, which creates a custom `TestSet` for recording what kind of failure was
+    experienced.
