@@ -24,3 +24,9 @@ function builddocs(clear=false)
 end
 
 builddocs()
+
+!isinteractive() && deploydocs(
+   repo = "github.com/Seelengrab/PropCheck.jl.git",
+   devbranch = "main",
+   push_preview = true
+)
