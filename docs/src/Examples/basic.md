@@ -88,6 +88,20 @@ arguments with splatting those arguments into the property with `Base.splat` to 
 
 ```@example example_add
 using Test
+add(a,b) = a+b # hide
+commutative(a,b)   =  add(a,b) == add(b,a) # hide
+associative(a,b,c) =  add(add(a,b), c) == add(a, add(b,c)) # hide
+identity_add(a)    =  add(a,zero(a)) == a # hide
+function successor(a::T, b::T) where T # hide
+    a, b = minmax(a,b) # hide
+    sumres = a # hide
+    for _ in one(b):b # hide
+        sumres = add(sumres, one(b)) # hide
+    end # hide
+ # hide
+    sumres == add(a,b) # hide
+end # hide
+using PropCheck # hide
 try # hide
 @testset "Addition" begin
     @test check(identity_add,       itype(UInt))
