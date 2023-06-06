@@ -8,7 +8,7 @@ the invariants the original input was generated under.
 Check out the Examples to get an introduction to property based testing and to learn how to write your own tests!
 
 ```@contents
-Pages = ["index.md", "intro.md", "Examples/basic.md", "Example/structs.md", "Example/containers.md", "Example/properties.md"]
+Pages = ["index.md", "intro.md", "Examples/basic.md", "Examples/structs.md", "Examples/containers.md", "Examples/properties.md"]
 Depth = 3
 ```
 
