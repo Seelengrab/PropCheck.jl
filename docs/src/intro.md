@@ -57,7 +57,7 @@ a few major drawbacks:
 
 On its own, just `foo_prop` is already property based testing - we take some expected input and check it against the expected output/behavior.
 However, on 64-bit systems, `Int` has a value in the interval `[-9223372036854775808, 9223372036854775807]`, which is one of $$2^{64}$$ different
-values. Considering that our function takes two of those, our input space has $$2^{2^{64}}$$ distinct pairs of elements! Looping through all of them
+values. Considering that our function takes two of those, our input space has $$2^{2 \times 64}$$ distinct pairs of elements! Looping through all of them
 would take much too long. Worse, we may then need to record the result for each of them to prove later that we actually checked it.
 With more complex data types, this only grows worse as more different types and combinations of them are involved.
 
