@@ -79,7 +79,7 @@ vec = PropCheck.vector(iconst(3), itype(Int8));
 
 Which we can then run against the `prop` from earlier:
 
-```jldoctest examplevec; filter = [r"\[ Info: \d+", r" \d", r"[└│]\s+-?\d+"], setup=:(using PropCheck; vec = PropCheck.vector(iconst(3), itype(Int8)))
+```jldoctest examplevec; filter = [r"\[ Info: \d+", r"[└│]\s+-?\d+", r"^ \d"], setup=:(using PropCheck; vec = PropCheck.vector(iconst(3), itype(Int8)))
 julia> prop(x) = all(<(5), x)
 prop (generic function with 1 method)
 
