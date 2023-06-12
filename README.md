@@ -6,7 +6,7 @@
 [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://seelengrab.github.io/PropCheck.jl/dev)
 [![codecov](https://codecov.io/github/Seelengrab/PropCheck.jl/branch/main/graph/badge.svg?token=PBH8NJCHKS)](https://codecov.io/github/Seelengrab/PropCheck.jl)
 
-A simple, thin package for property based testing. This package, though functional, is WIP and has some very rough edges. Improvements and suggestions are welcome, but please check the TODO below for what's already planned.
+A simple, thin package for property based testing. This package, though functional, is WIP and has some very rough edges. Improvements and suggestions are welcome, but please check the planned features list in the [documentation](https://seelengrab.github.io/PropCheck.jl/dev) for what's already planned.
 
 ## Installation
 
@@ -16,4 +16,4 @@ This package is not yet registered with General, so to install do
 pkg> add https://github.com/Seelengrab/PropCheck.jl.git
 ```
 
-Please check out the [documentation](https://seelengrab.github.io/PropCheck.jl/stable) to learn how you can use PropCheck.jl to fuzz your code.
+Please check out the [documentation](https://seelengrab.github.io/PropCheck.jl/dev) to learn how you can use PropCheck.jl to fuzz your code.
