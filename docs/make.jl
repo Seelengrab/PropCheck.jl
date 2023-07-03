@@ -26,6 +26,8 @@ function builddocs(clear=false)
                 "Generating Containers" => "Examples/containers.md",
                 "Composing Generators" => "Examples/properties.md"
             ],
+            "Shrinking with `Tree`s" => "shrinktrees.md",
+            "Interfaces" => "interfaces.md",
             "API Reference" => "api.md"
         ]
     )

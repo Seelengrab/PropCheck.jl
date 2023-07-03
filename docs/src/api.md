@@ -18,4 +18,7 @@
 ```@autodocs
 Modules = [PropCheck]
 Order = [:function, :type]
+Filter = t -> begin
+    !(isabstracttype(t) && t <: PropCheck.AbstractIntegrated) && !(t in (PropCheck.shrink, PropCheck.generate, PropCheck.itype))
+end
 ```

@@ -1,13 +1,37 @@
 using Base.Iterators: flatten, map as imap, filter as ifilter, product as iproduct
 using Random: shuffle!
 
+"""
+    Tree{T}
+
+A tree of `T` objects. The tree is inherently lazy; subtrees of subtrees are only
+generated on demand.
+
+The `subtrees` field is intentionally untyped, to allow for various kinds of lazy subtree
+representations.
+"""
 struct Tree{T}
     root::T
     subtrees
     Tree(el::T, subtrees=T[]) where T = new{T}(el, subtrees)
 end
 
+"""
+    root(t::Tree)
+
+Returns the singular root of the given `Tree`.
+
+See also [`subtrees`](@ref).
+"""
 root(t::Tree) = t.root
+
+"""
+    subtrees(t::Tree)
+
+Returns the (potentially lazy) subtrees of the given `Tree`.
+
+See also [`root`](@ref).
+"""
 subtrees(t::Tree) = t.subtrees
 
 Base.show(io::IO, t::Tree) = print(io, "Tree(", t.root, ')')
@@ -19,12 +43,15 @@ Base.:(==)(a::Tree{T}, b::Tree{T}) where T = a.root == b.root && a.subtrees == b
 Base.hash(t::Tree, h::UInt) = hash(t.subtrees, hash(t.root, h))
 
 """
-    unfold(f, t)
+    unfold(f, root)
 
-Unfolds `t` into a `Tree`, by applying `f` to each root to create subtrees.
+Unfolds `root` into a `Tree`, by applying `f` to each root to create subtrees.
+
+`root` is the new root of the returned `Tree`. `f` must return an iterable
+object with `eltype` egal to `typeof(root)`.
 """
-function unfold(f, t::T) where {T}
-    Tree(t, imap(unfold(f), f(t)))
+function unfold(f, root::T) where {T}
+    Tree(root, imap(unfold(f), f(root)))
 end
 unfold(f) = Base.Fix1(unfold, f)
 
@@ -51,12 +78,23 @@ function interleave(ts::Tuple)
     Tree(r, sh)
 end
 
-function Base.filter(f, t::Tree{T}, trim=false) where {T}
+"""
+    filter(pred, ::Tree, trim=false)
+
+Filters the given `Tree` by applying the predicate `pred` to each root.
+
+Filtering is done lazily for subtrees.
+
+`trim` controls whether subtrees that don't match the predicate should be pruned entirely,
+or only their roots should be removed from the resulting `Tree`. If `trim` is `true`,
+subtrees of subtrees that don't match the predicate are moved to the parent.
+"""
+function Base.filter(pred, t::Tree{T}, trim=false) where {T}
     r = root(t)
-    _filter(x) = filter(f, x, trim)
+    _filter(x) = filter(pred, x, trim)
     flat = Flatten{Tree{T}}(imap(_filter, subtrees(t)))
 
-    if f(r)
+    if pred(r)
         Flatten{Tree{T}}(Ref(Ref(Tree(r, flat))))
     else
         if !trim
@@ -71,6 +109,14 @@ Base.map(f, t::Tree) = imap(f, t)
 
 # lazy mapping by default
 _map(f) = Base.Fix1(imap, f)
+
+"""
+    map(f, ::Tree)
+
+Maps the function `f` over the nodes of the given `Tree`, returning a new true.
+
+The subtrees of the tree returned by `map` are guaranteed to be unique.
+"""
 function Base.Iterators.map(f, t::Tree{T}) where {T}
     r = root(t)
     lazySubtrees = uniqueitr(imap(_map(f), subtrees(t)))
