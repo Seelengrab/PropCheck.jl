@@ -1,6 +1,8 @@
 using Test
 using PropCheck
 using PropCheck: getSubtypes, numTests, Tree
+using RequiredInterfaces: RequiredInterfaces
+const RI = RequiredInterfaces
 
 """
 Tests the fallback shrinking for numbers to shrink towards zero.
@@ -102,6 +104,14 @@ end
 const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
 @time @testset "All Tests" begin
+    @testset "Interfaces" begin
+        RI.check_implementations(PropCheck.AbstractIntegrated)
+        extent_types = filter!(!=(PropCheck.IntegratedVal), RI.nonabstract_subtypes(PropCheck.ExtentIntegrated))
+        RI.check_implementations(PropCheck.ExtentIntegrated, extent_types)
+        # only this type implements extent
+        num_ival = PropCheck.IntegratedVal{PropCheck.Tree{Number}}
+        @test RI.check_interface_implemented(PropCheck.ExtentIntegrated, num_ival)
+    end
     @testset "Tear $T & reassemble" for T in getSubtypes(Base.IEEEFloat)
         @test check(x -> floatTear(T, x), itype(T))
         @testset "Special numbers: $x)" for x in (Inf, -Inf, NaN, -0.0, 0.0)

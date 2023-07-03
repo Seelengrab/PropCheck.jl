@@ -1,6 +1,8 @@
 using Random: Random, shuffle
+using RequiredInterfaces
 
 abstract type AbstractIntegrated{T} end
+@required AbstractIntegrated generate(::AbstractRNG, ::AbstractIntegrated)
 
 function Base.iterate(g::AbstractIntegrated, rng=default_rng())
     el = generate(rng, g)
@@ -49,6 +51,7 @@ generate(rng, i::Integrated{T}) where T = i.gen(rng)
 An integrated shrinker which has a bounds. The bounds can be accessed with the `extent` function.
 """
 abstract type ExtentIntegrated{T} <: AbstractIntegrated{T} end
+@required ExtentIntegrated extent(::ExtentIntegrated)
 
 """
     IntegratedRange{T,R,G,F} <: ExtentIntegrated{T}
