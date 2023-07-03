@@ -1,4 +1,12 @@
-using Documenter, PropCheck
+using Documenter
+using PropCheck
+
+liveserver = "livesever" in ARGS
+
+if liveserver
+    using Revise
+    Revise.revise()
+end
 
 DocMeta.setdocmeta!(PropCheck, :DocTestSetup, :(using PropCheck); recursive=true)
 
@@ -25,7 +33,7 @@ end
 
 builddocs()
 
-!isinteractive() && deploydocs(
+!isinteractive() && !liveserver && deploydocs(
    repo = "github.com/Seelengrab/PropCheck.jl.git",
    devbranch = "main",
    push_preview = true
