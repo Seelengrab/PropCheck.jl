@@ -1,6 +1,6 @@
 # Shrinking with `Tree`s
 
-In the [Examples](@ref) we've learnt about various integrated shrinkers. So how does this work
+In the examples we've learnt about various integrated shrinkers. So how does this work
 under the hood?
 
 When we `generate` a value from an integrated shrinker, we get some `Tree` out, not the value directly:
@@ -11,7 +11,7 @@ nums = PropCheck.iconst(3);
 t = generate(nums)
 ```
 
-`Tree` is the main object doing the heavy lifting behind the scenes - all [`AbstractIntegrated`](@ref)
+`Tree` is the main object doing the heavy lifting behind the scenes - all [`PropCheck.AbstractIntegrated`](@ref)
 create these objects. A `Tree` is nothing more than a lazy representation of a root and its shrunk values.
 You can think of a `Tree` as a tree with one element at the root, and zero to $$n$$ values as its children.
 As the name suggests, we can take a look at these shrink trees with `AbstractTrees`:
