@@ -10,10 +10,10 @@ A simple, thin package for property based testing. This package, though function
 
 ## Installation
 
-This package is not yet registered with General, so to install do
+This package is registered with General, so to install do
 
 ```julia
-pkg> add https://github.com/Seelengrab/PropCheck.jl.git
+pkg> add PropCheck
 ```
 
-Please check out the [documentation](https://seelengrab.github.io/PropCheck.jl/dev) to learn how you can use PropCheck.jl to fuzz your code.
+Please check out the [documentation](https://seelengrab.github.io/PropCheck.jl/) to learn how you can use PropCheck.jl to fuzz your code.
