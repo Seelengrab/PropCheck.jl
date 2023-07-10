@@ -34,15 +34,20 @@ Depth = 3
 ## Planned Features
 
  * Reflection on methods, for creating arbitrary generators from function definitions
+   * See issue [#3](https://github.com/Seelengrab/PropCheck.jl/issues/3) tracking this.
  * Reintroducing generation of `Any`
+   * See issue [#4](https://github.com/Seelengrab/PropCheck.jl/issues/4) tracking this.
  * Better handling of errors during generation of values
    * Perhaps there's a way to automatically detect error paths and skip generating values that would lead to an error?
+   * See issue [#5](https://github.com/Seelengrab/PropCheck.jl/issues/5) tracking this.
  * Better handling of errors during testing
    * It would be great if we could shrink on the specific type & message of an error as well
    * Right now, all failures due to an error assume all errors are the same
+   * See issue [#6](https://github.com/Seelengrab/PropCheck.jl/issues/6) tracking this.
  * Better way to define default generators
    * Right now, an `itype(Int)` assumes all `Int`s are equally important - this is not always the case
    * Integers that are branched on that are close to the critical edge when a condition in that branch flips from `true` to `false` are usually more interesting, but that's not knowable just from `itype(Int)` itself.
    * I'd call such a generator "function aware" or "function integrated".
    * This extends to all kinds of properties, like the length of an array, whether a field in some object is set or not etc.
    * This is a very difficult problem, so please don't expect anything of the sort anytime soon. It's just a thought stuck in my head.
+   * See issue [#7](https://github.com/Seelengrab/PropCheck.jl/issues/7) tracking this.
