@@ -136,7 +136,7 @@ shrink according to `shrink`.
 mutable struct IntegratedUnique{T,ElT,S} <: AbstractIntegrated{T}
     els::Vector{ElT}
     cache::Vector{ElT}
-    const shrink::S
+    @constfield shrink::S
 
     function IntegratedUnique(vec::Vector{T}, shrink::S) where {T,S}
         treeType = integratorType(T)

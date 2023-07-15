@@ -120,7 +120,13 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     end
     @testset "numsToZero" begin
         @testset "$T" for T in numTypes
-            @test numsToZero(T) broken=(T == BigInt || T == BigFloat)
+            if VERSION >= v"1.7"
+                @test numsToZero(T) broken=(T == BigInt || T == BigFloat)
+            else
+                if T != BigInt && T != BigFloat
+                    @test numsToZero(T)
+                end
+            end
         end
     end
     @testset "filter predicates hold for shrunk values" begin
@@ -147,12 +153,20 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     @testset "throwing properties still shrink" begin
         @test check(throwingProperty, itype(UInt8)) == (0x05, ArgumentError("x not smaller than 5"))
     end
-    @testset stringsFromTypeToEmpty()
-    @testset "interleave preserves invariants" begin
-        @testset interleaveFilterInvariant()
-        @testset interleaveMapInvariant()
+    @testset "stringsFromTypeToEmpty" begin
+        stringsFromTypeToEmpty()
     end
-    @testset initialVectorLengthIsBoundedByRange()
+    @testset "interleave preserves invariants" begin
+        @testset "interleaveFilterInvariant" begin
+            interleaveFilterInvariant()
+        end
+        @testset "interleaveMapInvariant" begin
+            interleaveMapInvariant()
+        end
+    end
+    @testset "initialVectorLengthIsboundedByRange" begin
+        initialVectorLengthIsBoundedByRange()
+    end
     @testset "`Integrated` can be `collect`ed" begin
         @test all(x -> x isa Tree{Int}, collect(Iterators.take(itype(Int), 5)))
     end
@@ -163,13 +177,16 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         @test eltype(itr) == Tree{T}
         @test eltype(collect(itr)) == Tree{T}
     end
-    @testset "type unstable constructors" begin
-        grade = map(Base.splat(Pair), PropCheck.interleave(itype(String), isample(0:100)))
-        # it's type unstable because the empty dispatch returns `Dict{Any,Any}`!
-        # I'd love to propagate the lowerbound of `1` to make this type stable, but that is hard.
-        # maybe that needs dependent types?
-        gradegen = map(Base.splat(Dict), PropCheck.tuple(isample(0:10), grade))
-        @test eltype(gradegen) == Union{PropCheck.Tree{Dict{Any, Any}}, PropCheck.Tree{Dict{String, Int64}}}
+    if VERSION >= v"1.9"
+        # this sadly doesn't infer before then, so we can't really test it :/
+        @testset "type unstable constructors" begin
+            grade = map(Base.splat(Pair), PropCheck.interleave(itype(String), isample(0:100)))
+            # it's type unstable because the empty dispatch returns `Dict{Any,Any}`!
+            # I'd love to propagate the lowerbound of `1` to make this type stable, but that is hard.
+            # maybe that needs dependent types?
+            gradegen = map(Base.splat(Dict), PropCheck.tuple(isample(0:10), grade))
+            @test eltype(gradegen) == Union{PropCheck.Tree{Dict{Any, Any}}, PropCheck.Tree{Dict{String, Int64}}}
+        end
     end
     @testset "$f preserves invariants" for f in (PropCheck.str, PropCheck.vector)
         # 3 hex characters is plenty - this is already 3^11 == 177147 possible strings

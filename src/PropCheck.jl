@@ -1,5 +1,7 @@
 module PropCheck
 
+using Compat: Returns
+
 using Base: Signed
 using Test
 using InteractiveUtils: subtypes
