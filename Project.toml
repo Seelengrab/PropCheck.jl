@@ -1,7 +1,7 @@
 name = "PropCheck"
 uuid = "ca382230-33be-11e9-0059-d981d03070e4"
 authors = ["Sukera <Seelengrab@users.noreply.github.com>"]
-version = "0.9.1"
+version = "0.9.2"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
@@ -11,13 +11,13 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RequiredInterfaces = "97f35ef4-7bc5-4ec1-a41a-dcc69c7308c6"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[weakdeps]
-AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+[compat]
+Compat = "3.35, 4"
+RequiredInterfaces = "0.1"
+julia = "1.6"
 
 [extensions]
 ATExt = "AbstractTrees"
 
-[compat]
-Compat = "3.35, 4"
-RequiredInterfaces = "0.1"
-julia = "1.9"
+[weakdeps]
+AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
