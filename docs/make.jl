@@ -27,6 +27,7 @@ function builddocs(clear=false)
                 "Composing Generators" => "Examples/properties.md"
             ],
             "Shrinking with `Tree`s" => "shrinktrees.md",
+            "FAQ" => "faq.md",
             "Interfaces" => "interfaces.md",
             "API Reference" => "api.md"
         ]

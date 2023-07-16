@@ -1,3 +1,5 @@
+# API
+
 ## Function Index
 
 !!! warning "Stability"
@@ -13,7 +15,7 @@
 ```@index
 ```
 
-### Function reference
+## Function reference
 
 ```@autodocs
 Modules = [PropCheck]

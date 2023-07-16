@@ -17,4 +17,6 @@ This package is registered with General, so to install do
 pkg> add PropCheck
 ```
 
+PropCheck.jl currently supports Julia versions 1.6 and up. CI runs on nightly and is expected to pass, but no guarantee about stability on unreleased versions of Julia is given.
+
 Please check out the [documentation](https://seelengrab.github.io/PropCheck.jl/) to learn how you can use PropCheck.jl to fuzz your code.

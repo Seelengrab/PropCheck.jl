@@ -5,10 +5,12 @@ This is the documentation for *PropCheck.jl*, a property based testing framework
 It features integrated shrinkers, which can smartly shrink initial failures to smaller examples while preserving
 the invariants the original input was generated under.
 
-Check out the Examples to get an introduction to property based testing and to learn how to write your own tests!
+Check out the Examples in the sidebar to get an introduction to property based testing and to learn how to write your own tests!
+
+Here's also a sitemap for the rest of the documentation:
 
 ```@contents
-Pages = ["index.md", "intro.md", "Examples/basic.md", "Examples/structs.md", "Examples/containers.md", "Examples/properties.md"]
+Pages = ["index.md", "intro.md", "shrinktrees.md", "faq.md", "interfaces.md", "api.md"]
 Depth = 3
 ```
 
