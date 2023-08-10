@@ -2,6 +2,10 @@
     UniqueIterator(itr, by=identity)
 
 A lazy iterator over unique elements that have not been produced before.
+
+!!! warn "Floating Point"
+    This iterator treats distinct bitpatterns of `NaN` as distinct values,
+    unlike `Base.hash`.
 """
 struct UniqueIterator{T,By}
     itr::T
@@ -11,12 +15,23 @@ end
 Base.:(==)(a::UniqueIterator{T}, b::UniqueIterator{T}) where T = a.itr == b.itr && a.by == b.by
 Base.hash(t::UniqueIterator, h::UInt) = hash(t.by, hash(t.itr, h))
 
+"""
+    nanHash(x[, h=zero(UInt)])
+
+Produces a hash for values, with special consideration for `NaN`s, ensuring
+distinct bitpatterns in `NaN` produce different hashes.
+"""
+nanHash
+
+nanHash(x, h=zero(UInt)) = hash(x, h)
+nanHash(x::Base.IEEEFloat, h=zero(UInt)) = hash(reinterpret(uint(typeof(x)), x), h)
+
 function Base.iterate(itr::UniqueIterator)
     t = iterate(itr.itr)
     t === nothing && return nothing
     el, state = t
     # we store the hash instead of the object to allow GC to free it
-    (el, (state, Set{UInt}(hash(itr.by(el)))))
+    (el, (state, Set{UInt}(nanHash(itr.by(el)))))
 end
 
 function Base.iterate(itr::UniqueIterator, (state, cache))
@@ -25,7 +40,7 @@ function Base.iterate(itr::UniqueIterator, (state, cache))
         t = iterate(itr.itr, state)
         t === nothing && return nothing
         el, state = t
-        h = hash(itr.by(el))
+        h = nanHash(itr.by(el))
         h ∉ cache && break
     end
     push!(cache, h)
@@ -42,7 +57,12 @@ uniqueitr(itr; by=identity) = UniqueIterator(itr, by)
 uniqueitr(itr, itr2, itrs...; by=identity) = UniqueIterator(Flatten{eltype(itr)}(itr, itr2, itrs...), by)
 
 """
-Flatten with inferrable `eltype`. Requires the given iterators to have the same `eltype`.
+    Flatten{Eltype}
+
+An iterator like `Base.flatten`, except with inferrable `eltype`. Requires the given iterators to have the same `eltype`.
+
+!!! warn "Type mismatches"
+    The given `Eltype` is used to assert the return type; a type mismatch there _will_ throw.
 """
 struct Flatten{Eltype}
     it
