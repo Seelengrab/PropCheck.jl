@@ -218,4 +218,139 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end
         @test res
     end
+    @testset "IntegratedUnique" begin
+        colgen = PropCheck.vector(isample(0:10), itype(Int8))
+        # Taking as many elements as the source collection has
+        # produces the source collection again
+        @test check(colgen) do col
+            iu = PropCheck.IntegratedUnique(copy(col), shrink)
+            sort!(col)
+            iucol = sort!(map(root, Iterators.take(iu, length(col))))
+            firstiteration =  all(splat(==), zip(col, iucol))
+            iucol = sort!(map(root, Iterators.take(iu, length(col))))
+            seconditeration =  all(splat(==), zip(col, iucol))
+            iucol = sort!(map(root, Iterators.take(iu, length(col))))
+            thirditeration =  all(splat(==), zip(col, iucol))
+            firstiteration && seconditeration && thirditeration
+        end
+    end
+    @testset "IntegratedConst" begin
+        valgen = itype(Int8)
+        # Only & exactly the root is produced, without shrunk values
+        @test check(valgen) do v
+            genv = generate(iconst(v))
+            v == root(genv) && isempty(subtrees(genv))
+        end
+    end
+    @testset "IntegratedVal" begin
+        valgen = itype(Int8)
+        shrinkgen = iunique([shrink, PropCheck.noshrink], PropCheck.noshrink)
+        constgen = interleave(valgen, shrinkgen)
+        # The root is always the given element
+        @test check(constgen) do (v, s)
+            genv = generate(PropCheck.ival(v, s))
+            v == root(genv)
+        end
+        # The shrunk values of the root are consistent with the given shrinking function
+        @test check(constgen) do (v, s)
+            genv = generate(PropCheck.ival(v, s))
+            shrunks = sort!(s(v))
+            gensubs = sort!(map(root, subtrees(genv)))
+            length(shrunks) == length(gensubs) && all(splat(==), zip(shrunks, gensubs))
+        end
+    end
+    @testset "FiniteIntegrated" begin
+    @testset "IntegratedOnce" begin
+        valgen = itype(Int8)
+        # The value will only be generated exactly once
+        @test check(valgen) do v
+            gen = PropCheck.IntegratedOnce(v)
+            v == root(generate(gen)) && nothing == generate(gen)
+        end
+    end
+    @testset "IntegratedFiniteIterator" begin
+        function integratedFinitePreservesLength(itr)
+            # generation preserves the length
+            ifi = PropCheck.IntegratedFiniteIterator(itr)
+            length(itr) == length(ifi)
+        end
+
+        function integratedFinitePreservesOrder(itr)
+            # generation preserves the original iteration order
+            ifi = PropCheck.IntegratedFiniteIterator(itr)
+            # `iterate` calls `generate`
+            all(zip(itr, ifi)) do (a,b)
+                a == root(b)
+            end
+        end
+
+        function integratedFiniteGetsExhausted(itr)
+            # After `length(itr)` calls to `generate`, the shrinker is exhausted
+            ifi = PropCheck.IntegratedFiniteIterator(itr)
+            for _ in 1:length(itr)
+                generate(ifi)
+            end
+            Base.isdone(ifi) && generate(ifi) === nothing
+        end
+
+        lengen = isample(0:10)
+        elgen = itype(Int8)
+        vecgen = PropCheck.vector(lengen, elgen)
+        tupgen = PropCheck.tuple(lengen, elgen)
+
+        @testset for prop in (integratedFinitePreservesLength,
+                              integratedFinitePreservesOrder,
+                              integratedFiniteGetsExhausted)
+            @testset for gen in (vecgen, tupgen)
+                @test check(prop, gen)
+            end
+        end
+    end
+    @testset "IntegratedLengthBounded" begin
+        function givenLengthCorrectForInfinite(len)
+            gen = PropCheck.IntegratedLengthBounded(itype(Int8), len)
+            all(zip(gen, 1:(len+1))) do genval, counter
+                if counter == len
+                    genval isa Nothing
+                else
+                    genval isa Int8
+                end
+            end
+        end
+
+        function givenLengthUpperboundForFinite(len)
+            targetLen = div(len, 2) + 1
+            elgen = PropCheck.IntegratedFiniteIterator(rand(Int8, targetLen))
+            gen = PropCheck.IntegratedLengthBounded(elgen, len)
+            all(zip(gen, 1:max(targetLen, len))) do genval, counter
+                if counter > min(targetLen, len)
+                    genval isa Nothing
+                else
+                    genval isa Int8
+                end
+            end
+        end
+
+        @test check(givenLengthCorrectForInfinite, isample(0:20))
+        @test check(givenLengthUpperboundForFinite, isample(0:20))
+    end
+    gens = [
+        PropCheck.IntegratedOnce(6),
+        PropCheck.IntegratedFiniteIterator(1:11),
+        PropCheck.IntegratedLengthBounded(PropCheck.ifloat(Float16), 5)
+    ]
+    @testset for gen in gens
+        @testset "`filter` FiniteIntegrated" begin
+            @test check(isodd, filter(isodd, gen))
+        end
+        @testset "`map` FiniteIntegrated" begin
+            mgen = map(gen) do v
+                v, (sqrt ∘ abs)(v)
+            end
+            @test check(mgen) do a,b
+                a ≈ b^2
+            end
+        end
+    end
+    end
 end
