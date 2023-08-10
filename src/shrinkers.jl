@@ -109,21 +109,38 @@ exposize(::Type{Float16}) = 5
 exposize(::Type{Float32}) = 8
 exposize(::Type{Float64}) = 11
 
-function masks(T::DataType)
+function masks(::Type{T}) where T <: Base.IEEEFloat
     ui = uint(T)
     signbitmask = one(ui) << (8*sizeof(ui)-1)
     fracbitmask =  (-1 % ui) >> (8*sizeof(ui)-fracsize(T))
     expobitmask = ((-1 % ui) >> (8*sizeof(ui)-exposize(T))) << fracsize(T)
-    signbitmask, fracbitmask, expobitmask
+    signbitmask, expobitmask, fracbitmask
 end
 
-function assemble(T, sign, expo, frac)
-    ret = (sign << (exposize(T) + fracsize(T))) | (expo << fracsize(T)) | frac
+"""
+    assemble(::T, sign::I, expo::I, frac::I) where {I, T <: Union{Float16, Float32, Float64}} -> T
+
+Assembles `sign`, `expo` and `frac` arguments into the floating point number of type `T` it represents.
+`sizeof(T)` must match `sizeof(I)`.
+"""
+function assemble(::Type{T}, sign::I, expo::I, frac::I) where {I, T <: Base.IEEEFloat}
+    sizeof(T) == sizeof(I) || throw(ArgumentError("The bitwidth of  `$T` needs to match the other arguments of type `I`!"))
+    signmask, expomask, fracmask = masks(T)
+    sign = (sign << (exposize(T) + fracsize(T))) & signmask
+    expo = (expo <<                fracsize(T))  & expomask
+    frac =  frac                                 & fracmask
+    ret =  sign | expo | frac
     return reinterpret(T, ret)
 end
 
-function tear(x::T) where T <: AbstractFloat
-    signbitmask, fracbitmask, expobitmask = masks(T)
+"""
+    tear(x::T) where T <: Union{Float16, Float32, Float64} -> Tuple{I, I, I}
+
+Returns the sign, exponent and fractional parts of a floating point number.
+The returned tuple consists of three unsigned integer types `I` of the same bitwidth as `T`.
+"""
+function tear(x::T) where T <: Base.IEEEFloat
+    signbitmask, expobitmask, fracbitmask = masks(T)
     ur = reinterpret(uint(T), x)
     s = (ur & signbitmask) >> (exposize(T) + fracsize(T))
     e = (ur & expobitmask) >>                fracsize(T)
@@ -139,7 +156,7 @@ Shrinks an `AbstractFloat`.
 Shrinks towards `iszero(T)`. `Inf`, `NaN` and `zero(T)` produce no shrunk values.
 Positive numbers produce their negative counterparts.
 """
-function shrink(r::T) where T <: AbstractFloat
+function shrink(r::T) where T <: Base.IEEEFloat
     (isinf(r) || isnan(r) || iszero(r)) && return T[]
     os,oe,of = tear(r)
     signbits = shrink(os)
