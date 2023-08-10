@@ -101,6 +101,14 @@ function floatTear(T, x)
     x === PropCheck.assemble(T, PropCheck.tear(x)...)
 end
 
+function assembleInf(T)
+    check(itype(Bool)) do b
+        inttype = PropCheck.uint(T)
+        f = PropCheck.assemble(T, inttype(b), typemax(inttype), zero(inttype))
+        b == signbit(f)
+    end
+end
+
 const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
 @time @testset "All Tests" begin
@@ -113,7 +121,10 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         @test RI.check_interface_implemented(PropCheck.ExtentIntegrated, num_ival)
     end
     @testset "Tear $T & reassemble" for T in getSubtypes(Base.IEEEFloat)
+        @testset assembleInf(T)
         @test check(x -> floatTear(T, x), itype(T))
+        @test check(isinf, PropCheck.ifloatinf(T))
+        @test check(isnan, PropCheck.ifloatnan(T))
         @testset "Special numbers: $x)" for x in (Inf, -Inf, NaN, -0.0, 0.0)
             @test floatTear(T, T(x))
         end
