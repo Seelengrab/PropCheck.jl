@@ -87,6 +87,8 @@ end
     ifloatinf(::Type{T}) where T <: Union{Float16, Float32, Float64}
 
 An integrated shrinker producing nothing but valid `Inf`s.
+
+See also [`ifloatnan`](@ref), [`ifloatinfnan`](@ref).
 """
 ifloatinf(::Type{T}) where T <: Base.IEEEFloat = map(itype(Bool)) do b
     inttype = uint(T)
@@ -98,12 +100,31 @@ end
     ifloatnan(::T) where T <: Union{Float16, Float32, Float64}
 
 An integrated shrinker producing nothing but valid `NaN`s.
+
+See also [`ifloatinf`](@ref), [`ifloatinfnan`](@ref).
 """
 function ifloatnan(::Type{T}) where T <: Base.IEEEFloat
-    # NaNs are just Infs with some nonzero noise, as it turns out
-    vintgen = filter(!iszero, itype(uint(T)))
+    # NaNs are just Infs with some nonzero fractional noise, as it turns out
+    vintgen = filter(itype(uint(T))) do val
+        _, _, fracmask = masks(T)
+        !iszero(val & fracmask)
+    end
     map(interleave(vintgen, ifloatinf(T))) do (vrand, v)
         vint = reinterpret(uint(T), v)
         reinterpret(T, vrand | vint)
+    end
+end
+
+"""
+    ifloatinfnan(::Type{T}) where T <: Union{Float16, Float32, Float64}
+
+An integrated shrinker producing nothing but valid `NaN`s and `Inf`s.
+
+Implemented more efficiently than naive combining of [`ifloatnan`](@ref) and [`ifloatinf`](@ref).
+"""
+function ifloatinfnan(::Type{T}) where T <: Base.IEEEFloat
+    map(itype(uint(T))) do val
+        _, expomask, _ = masks(T)
+        reinterpret(T, val | expomask)
     end
 end

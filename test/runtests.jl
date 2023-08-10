@@ -123,8 +123,11 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     @testset "Tear $T & reassemble" for T in getSubtypes(Base.IEEEFloat)
         @testset assembleInf(T)
         @test check(x -> floatTear(T, x), itype(T))
-        @test check(isinf, PropCheck.ifloatinf(T))
-        @test check(isnan, PropCheck.ifloatnan(T))
+        @test check(isinf, PropCheck.ifloatinf(T); transform=bitstring)
+        @test check(isnan, PropCheck.ifloatnan(T); transform=bitstring)
+        @test check(PropCheck.ifloatinfnan(T); transform=bitstring) do v
+            isnan(v) | isinf(v)
+        end
         @testset "Special numbers: $x)" for x in (Inf, -Inf, NaN, -0.0, 0.0)
             @test floatTear(T, T(x))
         end
