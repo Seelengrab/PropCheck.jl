@@ -203,11 +203,11 @@ dontShrink(i::AbstractIntegrated{T}) where {T} = Generator{T}(rng -> root(genera
 dependent(g::Generator{T,F}) where {T,F} = Integrated{T,F}(g.gen)
 
 """
-    map(f, i::Integrated)
+    map(f, i::AbstractIntegrated) -> AbstractIntegrated
 
-Maps `f` lazily over all elements in `i`, producing a new tree.
+Maps `f` lazily over all elements in `i`, producing a `AbstractIntegrated` generating the mapped values.
 """
-function PropCheck.map(f, gen::AbstractIntegrated{Tree{T}}) where {T}
+function PropCheck.map(f::F, gen::AbstractIntegrated{Tree{T}}) where {T, F}
     mapType = integratorType(Union{Base.return_types(f, (T,))...})
     function genF(rng)
         map(f, generate(rng, freeze(gen)))
@@ -224,7 +224,7 @@ function PropCheck.map(funcs::AbstractIntegrated{Tree{F}}, gen::AbstractIntegrat
 end
 
 """
-    filter(p, i::AbstractIntegrated[, trim=false])
+    filter(p, i::AbstractIntegrated[, trim=false]) -> AbstractIntegrated
 
 Filters `i` lazily such that all elements contained fulfill the predicate `p`, i.e. all elements for which `p` is `false` are removed.
 
