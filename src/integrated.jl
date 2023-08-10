@@ -194,6 +194,125 @@ function extent(iv::IntegratedVal{Tree{T}}) where T<:Number
     end
 end
 
+"""
+    FiniteIntegrated{T} <: AbstractIntegrated{Union{Tree{T}, Nothing}}
+
+An integrated shrinker producing only a finite number of elements.
+
+ * `Base.IteratorSize(::FiniteIntegrated)` must return a `Base.HasLength()` or `Base.HasShape`.
+   * `length(::T)` needs to be implemented for your `T <: FiniteIntegrated`; there is no fallback.
+   * If your `T <: FiniteIntegrated` has a shape, return that from `IteratorSize` instead & implement `size` as well.
+
+Once the integrated generator is exhausted, `generate(::FiniteIntegrated)` will return `nothing`.
+"""
+abstract type FiniteIntegrated{T} <: AbstractIntegrated{T} end
+Base.IteratorSize(::Type{<:FiniteIntegrated}) = Base.HasLength()
+
+"""
+    IntegratedOnce(el[, shrink=shrink])
+    IntegratedOnce{T} <: FiniteIntegrated{Tree{T}}
+
+An integrated shrinker that produces a shrink tree with the value `el` at its root exactly once.
+Afterwards, the integrated shrinker produces `nothing`.
+"""
+mutable struct IntegratedOnce{T, S} <: FiniteIntegrated{Tree{T}}
+    @constfield el::T
+    @constfield shrink::S
+    done::Bool
+    function IntegratedOnce(el::T, shrink::S=shrink) where {T,S}
+        new{T, S}(el, shrink, false)
+    end
+end
+Base.length(::IntegratedOnce) = 1
+
+function generate(::AbstractRNG, oi::IntegratedOnce)
+    oi.done && return nothing
+    oi.done = true
+    unfold(Shuffle ∘ oi.shrink, oi.el)
+end
+
+"""
+    IntegratedFiniteIterator(itr[, shrink=shrink])
+    IntegratedFiniteIterator{T} <: FiniteIntegrated{T}
+
+An integrated shrinker taking arbitrary iterables that have a length or a shape. Once the iterator is
+exhausted, the integrated shrinker produces `nothing`.
+
+The values produced by this integrated shrinker shrink according to the given shrinking function.
+"""
+mutable struct IntegratedFiniteIterator{T,I,S,IS} <: FiniteIntegrated{Tree{T}}
+    @constfield itr::I
+    @constfield shrink::S
+    state::IS
+    function IntegratedFiniteIterator(itr::I, shrink::S=shrink) where {I,S}
+        !(Base.IteratorSize(I) isa Base.HasLength ||
+            Base.IteratorSize(I) isa Base.HasShape) &&
+            throw(ArgumentError("The given iterator does not have a finite length!"))
+        state = iterate(itr)
+        new{eltype(I), I, S, Union{Nothing, typeof(state)}}(itr, shrink, state)
+    end
+end
+Base.IteratorSize(fii::IntegratedFiniteIterator) = Base.IteratorSize(fii.itr)
+Base.size(fii::IntegratedFiniteIterator) = if Base.IteratorSize(fii.itr) isa Base.HasShape
+    size(fii.itr)
+else
+    throw(ArgumentError("The iterator wrapped by this `FiniteIteratorIntegrated` does not have a shape!"))
+end
+Base.length(fii::IntegratedFiniteIterator) = length(fii.itr)
+Base.isdone(fii::IntegratedFiniteIterator) = isnothing(fii.state)
+
+function generate(rng::AbstractRNG, fii::IntegratedFiniteIterator{T}) where T
+    fii.state isa Nothing && return nothing
+    el, nstate = fii.state
+    fii.state = iterate(fii.itr, nstate)
+    unfold(Shuffle ∘ fii.shrink, el)::Tree{T}
+end
+
+"""
+    ChainIntegrated(is::AbstractIntegrated...)
+    ChainIntegrated{Eltype, N, Is} where {Eltype, N, Is <: NTuple{N, AbstractIntegrated}}
+
+An integrated shrinker chaining together a number of given integrated shrinkers, producing the values
+they generate one after another.
+
+All except the last argument must have some finite length, meaning the integrated shrinker must subtype [`FiniteIntegrated`](@ref).
+Only the last integrated shrinker is allowed to be only `<: AbstractIntegrated`.
+
+The values produced by this integrated shrinker shrink according to the shrinking function given to the shrinker that originally
+produce them.
+"""
+mutable struct IntegratedChain{T, N, Is <: NTuple{N, AbstractIntegrated}} <: AbstractIntegrated{T}
+    index::Int
+    @constfield chain::Is
+
+    function IntegratedChain(is::AbstractIntegrated...)
+        start = is[begin:end-1]
+        all(start) do i
+            i isa FiniteIntegrated
+        end || throw(ArgumentError("Only the last argument to `ChainIntegrated` is allowed to not have a length!"))
+        T = Union{eltype.(is)...}
+        Is = Tuple{typeof.(is)...}
+        new{T, length(is), Is}(1, is)
+    end
+end
+Base.isdone(ci::IntegratedChain) = ci.index > lastindex(ci.chain)
+
+function generate(rng::AbstractRNG, ci::IntegratedChain)
+    while true
+        # we exhausted all integrated shrinkers
+        isdone(ci) && return nothing
+        integrated = ci.chain[ci.index]
+        ret = generate(rng, integrated)
+        if ret isa Nothing
+            # the integrated shrinker was exhausted, so try the next one
+            ci.index += 1
+            continue
+        else
+            return ret
+        end
+    end
+end
+
 ################################################
 # utility for working with integrated generators
 ################################################
