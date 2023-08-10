@@ -43,3 +43,67 @@ generate(rng, ::Type{Float64}) = reinterpret(Float64, generate(rng, UInt64))
 generate(rng, ::Type{NTuple{N,T}}) where {N,T} = ntuple(_ -> generate(rng, T), N)
 # Ref. https://github.com/JuliaLang/julia/issues/44741#issuecomment-1079083216
 generate(rng, ::Type{String}) = randstring(rng, typemin(Char):"\xf7\xbf\xbf\xbf"[1], 10)
+
+#######################
+# special case generation
+#######################
+
+"""
+    iposint(::T) where T <: Union{Int8, Int16, Int32, Int64, Int128}
+
+An integrated shrinker producing positive values of type `T`.
+"""
+iposint(T::Type{<:Base.BitSigned}) = map(itype(T)) do v
+    v & typemax(T)
+end
+
+"""
+    inegint(::T) where T <: Union{Int8, Int16, Int32, Int64, Int128}
+
+An integrated shrinker producing negative values of type `T`.
+"""
+inegint(T::Type{<:Base.BitSigned}) = map(itype(T)) do v
+    v | ~typemax(T)
+end
+
+"""
+    ifloat(::T) where T <: Union{Float16, Float32, Float64}
+
+An integrated shrinker producing floating point values, except `NaN`s and `Inf`s.
+
+!!! info "NaN & Inf"
+    There are multiple valid bitpatterns for both `NaN`- and `Inf`-like values.
+    This shrinker is guaranteed not to produce any of them of its own volition.
+    However, functions running on the values produced by this shrinker may still
+    result in `NaN` or `Inf` to be produced. For example, if this shrinker produces
+    a `0.0` and that number is passed to `x -> 1.0/x`, you'll still get a `Inf`.
+    This can be important for `map`ping over this shrinker.
+"""
+ifloat(::Type{T}) where T <: Base.IEEEFloat = filter(itype(T), true) do v
+    !(isinf(v) | isnan(v))
+end
+
+"""
+    ifloatinf(::Type{T}) where T <: Union{Float16, Float32, Float64}
+
+An integrated shrinker producing nothing but valid `Inf`s.
+"""
+ifloatinf(::Type{T}) where T <: Base.IEEEFloat = map(itype(Bool)) do b
+    inttype = uint(T)
+    sign = inttype(b)
+    assemble(T, sign, typemax(inttype), zero(inttype))
+end
+
+"""
+    ifloatnan(::T) where T <: Union{Float16, Float32, Float64}
+
+An integrated shrinker producing nothing but valid `NaN`s.
+"""
+function ifloatnan(::Type{T}) where T <: Base.IEEEFloat
+    # NaNs are just Infs with some nonzero noise, as it turns out
+    vintgen = filter(!iszero, itype(uint(T)))
+    map(interleave(vintgen, ifloatinf(T))) do (vrand, v)
+        vint = reinterpret(uint(T), v)
+        reinterpret(T, vrand | vint)
+    end
+end
