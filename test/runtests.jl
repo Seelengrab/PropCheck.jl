@@ -359,12 +359,49 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end
         @testset "`map` FiniteIntegrated" begin
             mgen = map(gen) do v
-                v, (sqrt ∘ abs)(v)
+                v, sqrt(v)
             end
-            @test check(mgen) do a,b
-                a ≈ b^2
+            @test check(mgen) do (a,b)
+                sqrt(a) ≈ b
             end
         end
+    end
+    @testset "`interleave` FiniteIntegrated" begin
+        @testset "IntegratedOnce" begin
+            gen = PropCheck.IntegratedOnce(6)
+            woven = interleave(gen, deepcopy(gen))
+            @test begin
+                res = generate(woven)
+                res isa Tree{Tuple{Int, Int}} && root(res) == (6,6)
+            end
+            @test generate(woven) isa Nothing
+        end
+        @testset "IntegratedFiniteIterator" begin
+            src = 1:11
+            gen = PropCheck.IntegratedFiniteIterator(src)
+            woven = interleave(gen, deepcopy(gen))
+            for i in src
+                res = generate(woven)
+                @test res isa Tree{Tuple{Int, Int}} && root(res) == (i,i)
+            end
+            @test generate(woven) isa Nothing
+        end
+        @testset "IntegratedLengthBounded" begin
+            bound = PropCheck.iposint(Int8)
+            @test check(bound) do v
+                gen = PropCheck.IntegratedLengthBounded(itype(Int8), v)
+                woven = interleave(gen, deepcopy(gen))
+                count(woven) do t
+                    t isa Tree{Tuple{Int8, Int8}}
+                end == v && generate(woven) isa Nothing
+            end
+        end
+    end
+    @testset "`check` on finite integrated reaches second generated value" begin
+        gen = PropCheck.IntegratedFiniteIterator(1:2)
+        @test check(gen) do v
+            v != 2
+        end == 2
     end
     end
 end
