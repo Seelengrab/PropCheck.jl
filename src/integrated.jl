@@ -387,7 +387,7 @@ Base.isdone(ilb::IntegratedLengthBounded) = ilb.curcount > ilb.bound
 function generate(rng::AbstractRNG, ilb::IntegratedLengthBounded)
     Base.isdone(ilb) && return nothing
     ilb.curcount += 1
-    generate(rng, ilb)
+    generate(rng, ilb.integrated)
 end
 
 ################################################
