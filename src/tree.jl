@@ -24,6 +24,7 @@ Returns the singular root of the given `Tree`.
 See also [`subtrees`](@ref).
 """
 root(t::Tree) = t.root
+root(::Nothing) = nothing
 
 """
     subtrees(t::Tree)
@@ -33,6 +34,7 @@ Returns the (potentially lazy) subtrees of the given `Tree`.
 See also [`root`](@ref).
 """
 subtrees(t::Tree) = t.subtrees
+subtrees(::Nothing) = nothing
 
 Base.show(io::IO, t::Tree) = print(io, "Tree(", t.root, ')')
 
