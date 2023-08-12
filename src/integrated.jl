@@ -49,7 +49,20 @@ Base.eltype(::Type{<:AbstractIntegrated{T}}) where T = T
 #######
 
 """
-    Integrated{T} <: AbstractIntegrated{T}
+    InfiniteIntegrated{T} <: AbstractIntegrated{T}
+
+Abstract supertype for all integrated shrinkers that provide infinite generation of elements.
+
+Fallback definitions:
+    * `Base.IteratorSize(::Type{<:InfiniteIntegrated}) = Base.IsInfinite()`
+
+Overwriting `Base.IteratorSize` for subtypes of this type is disallowed.
+"""
+abstract type InfiniteIntegrated{T} <: AbstractIntegrated{T} end
+Base.IteratorSize(::Type{<:InfiniteIntegrated}) = Base.IsInfinite()
+
+"""
+    Integrated{T} <: InfiniteIntegrated{T}
 
 A naive integrated shrinker, only providing extremely basic functionality for
 generating and shrinking [`Tree`](@ref)s. Default fallback if no other, more
@@ -59,7 +72,7 @@ specialized type exists.
     This type is likely going to be redesigned in the future. Methods constructing it
     are not stable, and may be removed at any point.
 """
-struct Integrated{T,F} <: AbstractIntegrated{T}
+struct Integrated{T,F} <: InfiniteIntegrated{T}
     gen::F
 end
 function Integrated(m::Manual{T}, s=m.shrink) where {T}
@@ -88,7 +101,7 @@ integratorType(::Type{T}) where T = Tree{T}
 generate(rng::AbstractRNG, i::Integrated{T}) where T = i.gen(rng)
 
 """
-    ExtentIntegrated{T} <: AbstractIntegrated{T}
+    ExtentIntegrated{T} <: InfiniteIntegrated{T}
 
 An integrated shrinker which has bounds. The bounds can be accessed with the `extent` function
 and are assumed to have `first` and `last` method defined for them.
@@ -97,7 +110,7 @@ Required methods:
 
   * `extent(::ExtentIntegrated)`
 """
-abstract type ExtentIntegrated{T} <: AbstractIntegrated{T} end
+abstract type ExtentIntegrated{T} <: InfiniteIntegrated{T} end
 @required ExtentIntegrated extent(::ExtentIntegrated)
 
 """
@@ -139,13 +152,13 @@ extent(ir::IntegratedConst) = (ir.bounds, ir.bounds)
 
 """
     IntegratedUnique(vec::Vector{ElT}, shrink::S) where {ElT,S}
-    IntegratedUnique{T,ElT,S} <: AbstractIntegrated{T}
+    IntegratedUnique{T,ElT,S} <: InfiniteIntegrated{T}
 
 An integrated shrinker, taking a vector `vec`. The shrinker will produce all unique values of `vec`
 in a random order before producing a value it returned before. The values produced by this shrinker
 shrink according to `shrink`.
 """
-mutable struct IntegratedUnique{T,ElT,S} <: AbstractIntegrated{T}
+mutable struct IntegratedUnique{T,ElT,S} <: InfiniteIntegrated{T}
     els::Vector{ElT}
     cache::Vector{ElT}
     @constfield shrink::S
@@ -173,7 +186,7 @@ freeze(i::IntegratedUnique{T}) where {T} = Generator{T}(rng -> generate(rng, i))
 
 """
     IntegratedVal(val::V, shrink::S) where {V,S}
-    IntegratedVal{T,V,S} <: AbstractIntegrated{T}
+    IntegratedVal{T,V,S} <: InfiniteIntegrated{T}
 
 An integrated shrinker, taking a value `val`. The shrinker will always produce `val`, which
 shrinks according to `shrink`.
@@ -284,18 +297,21 @@ end
 
 """
     ChainIntegrated(is::AbstractIntegrated...)
-    ChainIntegrated{Eltype, N, Is} where {Eltype, N, Is <: NTuple{N, AbstractIntegrated}}
+    ChainIntegrated{Eltype, N, Is, Finite} where {Eltype, N,
+                                            Is <: NTuple{N, <:AbstractIntegrated}, Finite} <: AbstractIntegrated{Eltype}
 
 An integrated shrinker chaining together a number of given integrated shrinkers, producing the values
 they generate one after another.
 
 All except the last argument must have some finite length, meaning the integrated shrinker must subtype [`FiniteIntegrated`](@ref).
-Only the last integrated shrinker is allowed to be only `<: AbstractIntegrated`.
+Only the last integrated shrinker is allowed to be only `<: InfiniteIntegrated`.
 
 The values produced by this integrated shrinker shrink according to the shrinking function given to the shrinker that originally
 produce them.
+
+The `Finite` type parameter is a `Bool`, indicating whether this `IntegratedChain` is finite or not.
 """
-mutable struct IntegratedChain{T, N, Is <: NTuple{N, AbstractIntegrated}} <: AbstractIntegrated{T}
+mutable struct IntegratedChain{T, N, Is <: NTuple{N, AbstractIntegrated}, Finite} <: AbstractIntegrated{T}
     index::Int
     @constfield chain::Is
 
@@ -306,11 +322,14 @@ mutable struct IntegratedChain{T, N, Is <: NTuple{N, AbstractIntegrated}} <: Abs
         end || throw(ArgumentError("Only the last argument to `ChainIntegrated` is allowed to not have a length!"))
         T = Union{eltype.(is)...}
         Is = Tuple{typeof.(is)...}
-        new{T, length(is), Is}(firstindex(is), is)
+        new{T, length(is), Is, last(is) isa FiniteIntegrated}(firstindex(is), is)
     end
 end
 Base.isdone(ci::IntegratedChain) = ci.index > lastindex(ci.chain)
-freeze(ci::IntegratedChain) = ci
+freeze(ci::IntegratedChain) = deepcopy(ci)
+Base.IteratorSize(ic::IntegratedChain{T, N, Is, true}) where {T,N,Is}  = Base.HasLength()
+Base.IteratorSize(ic::IntegratedChain{T, N, Is, false}) where {T,N,Is} = Base.IsInfinite()
+Base.length(ic::IntegratedChain{T, N, Is, true}) where {T,N,Is}        = sum(length, ic.chain)
 
 function generate(rng::AbstractRNG, ci::IntegratedChain)
     while true
@@ -368,7 +387,7 @@ end
 # utility for working with integrated generators
 ################################################
 
-freeze(i::AbstractIntegrated{T}) where {T} = Generator{T}(i.gen)
+freeze(i::InfiniteIntegrated{T}) where {T} = Generator{T}(i.gen)
 dontShrink(i::AbstractIntegrated{T}) where {T} = Generator{T}(rng -> root(generate(rng, i)))
 dependent(g::Generator{T,F}) where {T,F} = Integrated{T,F}(g.gen)
 
