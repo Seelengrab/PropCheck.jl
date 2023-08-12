@@ -464,6 +464,19 @@ function listAux(genLen::ExtentIntegrated{W}, genA::AbstractIntegrated{T}) where
     Generator{Vector{Tree{T}}}(genF)
 end
 
+"""
+    PropCheck.vector(genLen::ExtentIntegrated, genA::AbstractIntegrated{Tree{T}}) where T
+
+A utility function for creating an integrated shrinker producing `Vector{T}`, with its length
+controlled by the number generated from `genLen` and its elements created by `genA`.
+
+This is generally the best way to create a shrinkable vector, as it takes shrinking both length &
+elements into account, irrespective of shrinking order.
+
+!!! note "FiniteIntegrated"
+    Using a `FiniteIntegrated{T}` for the elements will cause the vector to have `Union{Nothing, T}`
+    as its `eltype` in the general case, because they may stop generating `T` at any point!
+"""
 function vector(@nospecialize(genLen::ExtentIntegrated), genA::AbstractIntegrated{T}) where {T}
     vecType = genA isa FiniteIntegrated ? Union{Nothing, eltype(T)} : eltype(T)
     function genF(rng)
@@ -497,8 +510,21 @@ function arrayAux(genLen::AbstractIntegrated, genA::AbstractIntegrated{T}) where
     Generator{Array{Tree{T}, N} where N}(genF)
 end
 
-array(genSize::AbstractIntegrated{Tree{T}}, genA) where T <: Integer = array(PropCheck.tuple(iconst(0x1), genSize), genA)
-function array(genSize::AbstractIntegrated{Tree{TP}}, genA::AbstractIntegrated{T}) where {T, TP <: NTuple}
+"""
+    PropCheck.array(genSize::AbstractIntegrated, genA::AbstractIntegrated{Tree{T}}) where T
+
+A utility function for creating an integrated shrinker producing `Array{T, N}`, with its size
+controlled by the tuple generated from `genLen` and its elements created by `genA`.
+If `genSize` produces an integer instead of a tuple of integers, this function will produce a `Vector` instead.
+
+This is generally the best way to create a shrinkable array, as it takes shrinking both size &
+elements into account, irrespective of shrinking order.
+
+!!! note "FiniteIntegrated"
+    Using a `FiniteIntegrated{T}` for the elements will cause the array to have `Union{Nothing, T}`
+    as its `eltype`, because they may stop generating `T` at any point!
+"""
+function array(genSize::AbstractIntegrated{Tree{TP}}, genA::AbstractIntegrated{Tree{T}}) where {T, TP <: NTuple}
     function genF(rng)
         treeArr = generate(rng, arrayAux(genSize, genA))
         interleave(treeArr)
@@ -508,6 +534,7 @@ function array(genSize::AbstractIntegrated{Tree{TP}}, genA::AbstractIntegrated{T
     gen = Generator{Tree{Array{arrType, length(TP.parameters)}}}(genF)
     dependent(gen)
 end
+array(genSize::AbstractIntegrated{Tree{T}}, genA) where T <: Integer = vector(genSize, genA)
 
 function tupleAux(genLen::AbstractIntegrated, genA::AbstractIntegrated{T}) where {T}
     n = dontShrink(genLen)
@@ -522,6 +549,14 @@ end
     tuple(genLen::AbstractIntegrated, genA::AbstractIntegrated)
 
 Generates a tuple of a generated length, using the elements produced by `genA`.
+
+!!! note "FiniteIntegrated"
+    Using a `FiniteIntegrated{T}` will cause the tuple to have `Union{Nothing, T}`
+    as its `eltype`, because they may stop generating `T` at any point!
+
+!!! warning "Type stability"
+    Due to the length produced by `genLen` not being known until runtime, this function is by its
+    very nature type unstable. Consider using `interleave` and a fixed number of known generators instead.
 """
 function tuple(genLen::AbstractIntegrated, genA::AbstractIntegrated{Tree{T}}) where {T}
     genF(rng) = interleave(generate(rng, tupleAux(genLen, genA)))
@@ -535,7 +570,7 @@ end
 
 Generates a string using the given `genLen` as a generator for the length.
 The default alphabet is `typemin(Char):"\xf7\xbf\xbf\xbf"[1]`, which is all
-representable `Char` values. 
+representable `Char` values.
 """
 function str(genLen::ExtentIntegrated, alphabet::AbstractIntegrated=isample(typemin(Char):"\xf7\xbf\xbf\xbf"[1]))
     map(join, vector(genLen, alphabet))
