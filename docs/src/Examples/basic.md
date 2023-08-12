@@ -67,7 +67,7 @@ julia> failprop(x) = add(x, one(x)) < x;
 julia> check(failprop, gen)
 ┌ Info: Found counterexample for 'failprop', beginning shrinking...
 └   Counterexample = 909071986488726633
-[ Info: 10 counterexamples found
+[ Info: 10 counterexamples found for failprop
 0
 ```
 

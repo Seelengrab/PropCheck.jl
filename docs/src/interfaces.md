@@ -37,6 +37,26 @@ PropCheck.ExtentIntegrated
 Its purpose is simple - values produced by an `ExtentIntegrated` are expected to fall within a given
 ordered set, with a maximum and a minimum, which is what is returned by `extent`.
 
+## `InfiniteIntegrated{T}`
+
+```@docs
+PropCheck.InfiniteIntegrated
+```
+
+`InfiniteIntegrated` are at the core of PropCheck.jl; they allow for arbitrarily long generation of new values.
+They are currently always implementes as stateless objects, and underpin the majority of generation that is possible
+with PropCheck.jl.
+
+## `FiniteIntegrated{T}`
+
+```@docs
+PropCheck.FiniteIntegrated
+```
+
+`FiniteIntegrated` are used for stopping generation of values. They are currently always implemented as
+stateful objects during generation, i.e. they cannot be restarted. This may change in the future, but is
+(currently) a consequence of the existing design.
+
 ## Generation & Shrinking
 
 These two functions are required if you want to customize shrinking & type-based generation.
@@ -56,6 +76,8 @@ PropCheck.itype
 
 In order to hook into the generation provided by `itype`, define [`generate`](@ref) for your type `T`.
 
-Generally speaking, `generate` should always produce the full set of possible values of a type.
+Generally speaking, `generate` should always produce the full set of possible values of a type. For example,
+`itype(Float64)` can produce every possible `Float64` value, with every possible bitpattern - that includes all
+different kinds of `NaN`.
 
 Be sure to also define a shrinking function for your type, by adding a method to [`shrink`](@ref).

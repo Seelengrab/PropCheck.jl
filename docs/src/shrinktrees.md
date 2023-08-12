@@ -7,7 +7,7 @@ When we `generate` a value from an integrated shrinker, we get some `Tree` out, 
 
 ```@repl  generateTree
 using PropCheck
-nums = PropCheck.iconst(3);
+nums = PropCheck.isample(1:3);
 t = generate(nums)
 ```
 
@@ -23,9 +23,11 @@ print_tree(t)
 
 On the left hand side up top we can see our generated root - the initial value `3`. One layer to the
 right, we can see the first level of shrinks of `3`. These values have been produced by the default
-shrinking function `shrink` that is passed to `ival` - they observe the property that their absolute
+shrinking function `shrink` that is passed to `isample` - they observe the property that their absolute
 value is strictly less than the value of our root, in order to guarantee that their shrunk values
-in turn don't ever generate the original value (in this case, `3`) again.
+in turn don't ever generate the original value (in this case, `3`) again. In addition, the default shrinking
+function also guarantees that the shrunk values are larger than the minimum of the given range; hence,
+the smallest number that can be generated is `1`.
 
 The magic behind PropCheck.jl is in this `Tree` object, which is heavily inspired by the [Hedgehog 
 Haskell library](https://hedgehog.qa) for property based testing.

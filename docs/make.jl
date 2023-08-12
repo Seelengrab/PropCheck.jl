@@ -24,7 +24,8 @@ function builddocs(clear=false)
                 "Basic Usage" => "Examples/basic.md",
                 "Generating Structs" => "Examples/structs.md",
                 "Generating Containers" => "Examples/containers.md",
-                "Composing Generators" => "Examples/properties.md"
+                "Composing Generators" => "Examples/properties.md",
+                "Generator Chaining" => "Examples/chaining.md"
             ],
             "Shrinking with `Tree`s" => "shrinktrees.md",
             "FAQ" => "faq.md",

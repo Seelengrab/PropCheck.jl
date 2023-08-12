@@ -90,7 +90,7 @@ julia> check(prop, vec)
 │     -62
 │      57
 └      81
-[ Info: 7 counterexamples found
+[ Info: 7 counterexamples found for prop
 3-element Vector{Int8}:
  0
  0
@@ -131,13 +131,13 @@ and subsequently, the minimal counterexample also changes, to the vector contain
 ```jldoctest examplevec; filter=[r"(\[ Info: \d+)",r"[┌│└]\s+-?\d+"], setup=:(using PropCheck; valvec = PropCheck.vector(ival(3), itype(Int8)); samplevec=PropCheck.vector(isample(0:5), itype(Int8)))
 julia> check(prop, valvec; show_initial=false)
 [ Info: Found counterexample for 'prop', beginning shrinking...
-[ Info: 7 counterexamples found
+[ Info: 7 counterexamples found for prop
 1-element Vector{Int8}:
  5
 
 julia> check(prop, samplevec; show_initial=false)
 [ Info: Found counterexample for 'prop', beginning shrinking...
-[ Info: 9 counterexamples found
+[ Info: 9 counterexamples found for prop
 1-element Vector{Int8}:
  5
 ```

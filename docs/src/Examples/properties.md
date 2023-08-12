@@ -1,4 +1,4 @@
-# Complex generation
+# Composing Generators
 
 I've mentioned in the last section how we need `tuple` and `vector` to generate tuples and vectors of values respectively.
 In this chapter, we'll use these to build a slightly more complex example.
