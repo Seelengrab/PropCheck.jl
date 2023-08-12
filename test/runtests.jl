@@ -239,11 +239,11 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
             iu = PropCheck.IntegratedUnique(copy(col), shrink)
             sort!(col)
             iucol = sort!(map(root, Iterators.take(iu, length(col))))
-            firstiteration =  all(splat(==), zip(col, iucol))
+            firstiteration =  all(Base.splat(==), zip(col, iucol))
             iucol = sort!(map(root, Iterators.take(iu, length(col))))
-            seconditeration =  all(splat(==), zip(col, iucol))
+            seconditeration =  all(Base.splat(==), zip(col, iucol))
             iucol = sort!(map(root, Iterators.take(iu, length(col))))
-            thirditeration =  all(splat(==), zip(col, iucol))
+            thirditeration =  all(Base.splat(==), zip(col, iucol))
             firstiteration && seconditeration && thirditeration
         end
     end
@@ -269,7 +269,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
             genv = generate(PropCheck.ival(v, s))
             shrunks = sort!(s(v))
             gensubs = sort!(map(root, subtrees(genv)))
-            length(shrunks) == length(gensubs) && all(splat(==), zip(shrunks, gensubs))
+            length(shrunks) == length(gensubs) && all(Base.splat(==), zip(shrunks, gensubs))
         end
     end
     @testset "FiniteIntegrated" begin
