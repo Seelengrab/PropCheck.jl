@@ -114,6 +114,13 @@ abstract type ExtentIntegrated{T} <: InfiniteIntegrated{T} end
 @required ExtentIntegrated extent(::ExtentIntegrated)
 
 """
+    extent(::ExtentIntegrated) -> Tuple{T,T} where T
+
+Gives a tuple of the upper & lower bound of this `ExtentIntegrated`.
+"""
+extent(::ExtentIntegrated)
+
+"""
     IntegratedRange{T,R,G,F} <: ExtentIntegrated{T}
 
 An integrated shrinker describing a range of values.
