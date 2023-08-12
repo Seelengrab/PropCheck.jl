@@ -1,7 +1,7 @@
 name = "PropCheck"
 uuid = "ca382230-33be-11e9-0059-d981d03070e4"
 authors = ["Sukera <Seelengrab@users.noreply.github.com>"]
-version = "0.9.2"
+version = "0.10.0"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
