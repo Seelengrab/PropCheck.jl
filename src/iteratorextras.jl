@@ -3,7 +3,7 @@
 
 A lazy iterator over unique elements that have not been produced before.
 
-!!! warn "Floating Point"
+!!! warning "Floating Point"
     This iterator treats distinct bitpatterns of `NaN` as distinct values,
     unlike `Base.hash`.
 """
@@ -61,7 +61,7 @@ uniqueitr(itr, itr2, itrs...; by=identity) = UniqueIterator(Flatten{eltype(itr)}
 
 An iterator like `Base.flatten`, except with inferrable `eltype`. Requires the given iterators to have the same `eltype`.
 
-!!! warn "Type mismatches"
+!!! warning "Type mismatches"
     The given `Eltype` is used to assert the return type; a type mismatch there _will_ throw.
 """
 struct Flatten{Eltype}
