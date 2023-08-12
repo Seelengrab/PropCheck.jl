@@ -578,6 +578,24 @@ end
 
 function interleave(intr::AbstractIntegrated...)
     rettuple = Tree{Tuple{eltype.(eltype.(intr))...}}
-    gen(rng) = interleave(generate.(rng, intr))
-    Integrated{rettuple, typeof(gen)}(gen)
+    function gen(rng)
+        trees = generate.(rng, intr)
+        any(isnothing, trees) && return nothing
+        interleave(trees)
+    end
+    ret = Integrated{rettuple, typeof(gen)}(gen)
+
+    # The interleaving is done, but can we guarantee something about the interwoven generation?
+    # This optimizes away, since it all only deals with things inferable from types :)
+    anyFinite = any(intr) do i
+        i isa FiniteIntegrated
+    end
+    if anyFinite
+        maxlen = foldl(intr; init=typemax(Int)) do prev, i
+            min(prev, i isa FiniteIntegrated ? length(i) : typemax(Int))
+        end
+        IntegratedLengthBounded(ret, maxlen)
+    else
+        return ret
+    end
 end
