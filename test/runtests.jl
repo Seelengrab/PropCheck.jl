@@ -124,7 +124,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         num_ival = PropCheck.IntegratedVal{PropCheck.Tree{Number}}
         @test RI.check_interface_implemented(PropCheck.ExtentIntegrated, num_ival)
     end
-    @testset "Tear $T & reassemble" for T in getSubtypes(Base.IEEEFloat)
+    @testset "Tear $T & reassemble, floating point generators" for T in getSubtypes(Base.IEEEFloat)
         @testset assembleInf(T)
         @test check(x -> floatTear(T, x), itype(T))
         @test check(isinf, PropCheck.ifloatinf(T); transform=bitstring)
@@ -132,8 +132,17 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         @test check(PropCheck.ifloatinfnan(T); transform=bitstring) do v
             isnan(v) | isinf(v)
         end
+        @test check(PropCheck.ifloat(T)) do v
+            !(isnan(v) | isinf(v))
+        end
         @testset "Special numbers: $x)" for x in (Inf, -Inf, NaN, -0.0, 0.0)
             @test floatTear(T, T(x))
+        end
+    end
+    @testset "Integer generators" begin
+        @testset for T in (getSubtypes(Base.BitSigned))
+            @test check(>=(zero(T)), PropCheck.iposint(T))
+            @test check(<(zero(T)), PropCheck.inegint(T))
         end
     end
     @testset "numsToZero" begin
