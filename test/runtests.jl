@@ -4,6 +4,10 @@ using PropCheck: getSubtypes, numTests, Tree
 using RequiredInterfaces: RequiredInterfaces
 const RI = RequiredInterfaces
 
+using Random: default_rng
+
+@info "RNG state is:" RNG=copy(default_rng())
+
 """
 Tests the fallback shrinking for numbers to shrink towards zero.
 """
