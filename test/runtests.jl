@@ -125,7 +125,9 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         @test RI.check_interface_implemented(PropCheck.ExtentIntegrated, num_ival)
     end
     @testset "Tear $T & reassemble, floating point generators" for T in getSubtypes(Base.IEEEFloat)
-        @testset assembleInf(T)
+        @testset "assembleInf" begin
+            assembleInf(T)
+        end
         @test check(x -> floatTear(T, x), itype(T))
         @test check(isinf, PropCheck.ifloatinf(T); transform=bitstring)
         @test check(isnan, PropCheck.ifloatnan(T); transform=bitstring)
