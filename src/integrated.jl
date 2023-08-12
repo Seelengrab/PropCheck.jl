@@ -11,6 +11,7 @@ This is usually going to be a [`Tree`](@ref) of objects.
 Required methods:
 
   * `generate(rng::AbstractRNG, ::A) where A <: AbstractIntegrated`
+  * `freeze(::A) where A <: AbstractIntegrated`
 
 Fallback definitions:
 
@@ -21,7 +22,18 @@ Fallback definitions:
     * Requires `generate`
 """
 abstract type AbstractIntegrated{T} end
-@required AbstractIntegrated generate(::AbstractRNG, ::AbstractIntegrated)
+@required AbstractIntegrated begin
+    generate(::AbstractRNG, ::AbstractIntegrated)
+    freeze(::AbstractIntegrated)
+end
+
+"""
+    freeze(::T) where T <: AbstractIntegrated -> T
+
+"Freezes" an `AbstractIntegrated` by returning a new object that has a `generate` method,
+and can be wrapped in a new integrated shrinker.
+"""
+freeze(::AbstractIntegrated)
 
 function Base.iterate(g::AbstractIntegrated, rng=default_rng())
     el = generate(rng, g)
