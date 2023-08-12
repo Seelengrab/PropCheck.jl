@@ -322,24 +322,25 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     @testset "IntegratedLengthBounded" begin
         function givenLengthCorrectForInfinite(len)
             gen = PropCheck.IntegratedLengthBounded(itype(Int8), len)
-            all(zip(gen, 1:(len+1))) do genval, counter
-                if counter == len
+            all(zip(gen, 1:(len+1))) do (genval, counter)
+                if counter > len
                     genval isa Nothing
                 else
-                    genval isa Int8
+                    genval isa Tree{Int8}
                 end
             end
         end
 
         function givenLengthUpperboundForFinite(len)
             targetLen = div(len, 2) + 1
-            elgen = PropCheck.IntegratedFiniteIterator(rand(Int8, targetLen))
+            sourceels = rand(Int8, targetLen)
+            elgen = PropCheck.IntegratedFiniteIterator(sourceels)
             gen = PropCheck.IntegratedLengthBounded(elgen, len)
-            all(zip(gen, 1:max(targetLen, len))) do genval, counter
+            all(zip(gen, 1:max(targetLen, len))) do (genval, counter)
                 if counter > min(targetLen, len)
                     genval isa Nothing
                 else
-                    genval isa Int8
+                    genval isa Tree{Int8} && sourceels[counter] == root(genval)
                 end
             end
         end
@@ -350,7 +351,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     gens = [
         PropCheck.IntegratedOnce(6),
         PropCheck.IntegratedFiniteIterator(1:11),
-        PropCheck.IntegratedLengthBounded(PropCheck.ifloat(Float16), 5)
+        PropCheck.IntegratedLengthBounded(PropCheck.iposint(Int8), 5)
     ]
     @testset for gen in gens
         @testset "`filter` FiniteIntegrated" begin
