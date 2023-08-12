@@ -404,8 +404,8 @@ dependent(g::Generator{T,F}) where {T,F} = Integrated{T,F}(g.gen)
 Maps `f` lazily over all elements in `i`, producing an `AbstractIntegrated` generating the mapped values.
 """
 function PropCheck.map(f::F, gen::AbstractIntegrated{T}) where {T, F}
-    rettypes = reduce(hcat, (Base.return_types(f, (t,)) for t in unpackTreeUnion(T)))
-    mapType = integratorType(Union{rettypes...})
+    rettypes = Base.promote_op(f, unpackTreeUnion(T)...)
+    mapType = integratorType(rettypes)
     function genF(rng)
         val = generate(rng, freeze(gen))
         val === nothing && return val
@@ -424,7 +424,7 @@ end
 function PropCheck.map(funcs::AbstractIntegrated{Tree{F}}, gen::AbstractIntegrated{Tree{T}}) where {T,F}
     genF(rng) = interleave(generate(rng, funcs), generate(rng, gen))
     rootF = root(generate(funcs))
-    retT = reduce(typejoin, Base.return_types(rootF, (T,)))
+    retT = Base.promote_op(rootF, T)
     Integrated{Tree{retT}, typeof(genF)}(genF)
 end
 
