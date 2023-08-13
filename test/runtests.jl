@@ -406,4 +406,12 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end == 2
     end
     end
+    @testset "Inference" begin
+        @testset for gen in (
+                itype(Int8), PropCheck.iposint(Int8), PropCheck.inegint(Int8),
+                PropCheck.ifloat(Float16), PropCheck.ifloatinf(Float16), PropCheck.ifloatnan(Float16),
+                )
+            @test @inferred(generate(gen)) isa PropCheck.Tree
+        end
+    end
 end
