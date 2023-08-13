@@ -53,7 +53,7 @@ generate(rng, ::Type{String}) = randstring(rng, typemin(Char):"\xf7\xbf\xbf\xbf"
 
 An integrated shrinker producing positive values of type `T`.
 """
-iposint(T::Type{<:Base.BitSigned}) = map(itype(T)) do v
+iposint(::Type{T}) where T <:Base.BitSigned = map(itype(T)) do v
     v & typemax(T)
 end
 
@@ -62,7 +62,7 @@ end
 
 An integrated shrinker producing negative values of type `T`.
 """
-inegint(T::Type{<:Base.BitSigned}) = map(itype(T)) do v
+inegint(::Type{T}) where T <:Base.BitSigned = map(itype(T)) do v
     v | ~typemax(T)
 end
 
