@@ -49,7 +49,7 @@ generate(rng, ::Type{String}) = randstring(rng, typemin(Char):"\xf7\xbf\xbf\xbf"
 #######################
 
 """
-    iposint(::T) where T <: Union{Int8, Int16, Int32, Int64, Int128}
+    iposint(::Type{T}) where T <: Union{Int8, Int16, Int32, Int64, Int128}
 
 An integrated shrinker producing positive values of type `T`.
 """
@@ -58,7 +58,7 @@ iposint(T::Type{<:Base.BitSigned}) = map(itype(T)) do v
 end
 
 """
-    inegint(::T) where T <: Union{Int8, Int16, Int32, Int64, Int128}
+    inegint(::Type{T}) where T <: Union{Int8, Int16, Int32, Int64, Int128}
 
 An integrated shrinker producing negative values of type `T`.
 """
