@@ -43,6 +43,7 @@ generate(rng, ::Type{Float64}) = reinterpret(Float64, generate(rng, UInt64))
 generate(rng, ::Type{NTuple{N,T}}) where {N,T} = ntuple(_ -> generate(rng, T), N)
 # Ref. https://github.com/JuliaLang/julia/issues/44741#issuecomment-1079083216
 generate(rng, ::Type{String}) = randstring(rng, typemin(Char):"\xf7\xbf\xbf\xbf"[1], 10)
+generate(rng, ::Type{Char}) = rand(rng, typemin(Char):"\xf7\xbf\xbf\xbf"[1])
 
 #######################
 # special case generation
