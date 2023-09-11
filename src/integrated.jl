@@ -100,6 +100,10 @@ integratorType(::Type{T}) where T = Tree{T}
 
 generate(rng::AbstractRNG, i::Integrated{T}) where T = i.gen(rng)
 
+function Base.show(io::IO, i::Integrated{T}) where T
+    print(io, "Integrated{", T, "}(", i.gen, ")")
+end
+
 """
     ExtentIntegrated{T} <: InfiniteIntegrated{T}
 
@@ -140,6 +144,10 @@ end
 generate(rng::AbstractRNG, i::IntegratedRange) = generate(rng, i.gen)
 extent(ir::IntegratedRange) = (first(ir.bounds), last(ir.bounds))
 
+function Base.show(io::IO, it::IntegratedRange{T, R}) where {T,R}
+    print(io, "IntegratedRange(", it.bounds, ", ", it.gen, ", ", it.shrink, ")")
+end
+
 """
     IntegratedConst{T,R,G} <: ExtentIntegrated{T}
 
@@ -155,6 +163,10 @@ end
 freeze(ic::IntegratedConst) = ic
 generate(_::AbstractRNG, i::IntegratedConst) = Tree(i.bounds)
 extent(ir::IntegratedConst) = (ir.bounds, ir.bounds)
+
+function Base.show(io::IO, ic::IntegratedConst{T}) where T
+    print(io, "IntegratedConst(", ic.bounds, ")")
+end
 
 """
     IntegratedUnique(vec::Vector{ElT}[, shrink=shrink::S]) where {ElT,S}
@@ -175,6 +187,10 @@ mutable struct IntegratedUnique{T,ElT,S} <: InfiniteIntegrated{T}
         cache = sizehint!(similar(els, 0), length(els))
         new{treeType,T,S}(els, cache, shrink)
     end
+end
+
+function Base.show(io::IO, iu::IntegratedUnique{T,E,S}) where {T,E,S}
+    print(io, "IntegratedUnique(", union(iu.els, iu.cache), ", ", iu.shrink, ")")
 end
 
 function generate(rng::AbstractRNG, i::IntegratedUnique)
@@ -230,6 +246,10 @@ function extent(iv::IntegratedVal{Tree{T}}) where T<:Number
     end
 end
 
+function Base.show(io::IO, iv::IntegratedVal)
+    print(io, "IntegratedVal(", iv.val, ", ", iv.shrink, ")")
+end
+
 """
     FiniteIntegrated{T} <: AbstractIntegrated{T}
 
@@ -268,6 +288,10 @@ function generate(::AbstractRNG, oi::IntegratedOnce)
     unfold(Shuffle ∘ oi.shrink, oi.el)
 end
 
+function Base.show(io::IO, iio::IntegratedOnce)
+    print(io, "IntegratedOnce(", iio.el, ", ", iio.shrink, ", ", iio.done, ")")
+end
+
 """
     IntegratedFiniteIterator(itr[, shrink=shrink])
     IntegratedFiniteIterator{T} <: FiniteIntegrated{T}
@@ -304,6 +328,10 @@ function generate(_::AbstractRNG, fii::IntegratedFiniteIterator{T}) where T
     el, nstate = fii.state
     fii.state = iterate(fii.itr, nstate)
     unfold(Shuffle ∘ fii.shrink, el)
+end
+
+function Base.show(io::IO, ifi::IntegratedFiniteIterator)
+    Base.print(io, "IntegratedFiniteIterator(", ifi.itr, ", ", ifi.shrink, ")")
 end
 
 """
@@ -356,6 +384,15 @@ function generate(rng::AbstractRNG, ci::IntegratedChain)
             return ret
         end
     end
+end
+
+function Base.show(io::IO, ic::IntegratedChain)
+    print(io, "IntegratedChain(")
+    for i in ic.chain
+        print(io, i)
+        i != last(ic.chain) && print(io, ", ")
+    end
+    print(io, ")")
 end
 
 """
