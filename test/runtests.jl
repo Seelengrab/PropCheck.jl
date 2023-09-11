@@ -1,10 +1,13 @@
 using Test
+
 using PropCheck
 using PropCheck: getSubtypes, numTests, Tree
+const PC = PropCheck
+
 using RequiredInterfaces: RequiredInterfaces
 const RI = RequiredInterfaces
 
-using Random: default_rng
+using Random: default_rng, randperm
 
 @info "RNG state is:" RNG=copy(default_rng())
 
@@ -44,7 +47,7 @@ function stringsFromTypeToEmpty()
 end
 
 function interleaveFilterInvariant()
-    s = filter(l->length(l)>=5, PropCheck.vector(isample(0:10), itype(UInt8)), true)
+    s = filter(l->length(l)>=5, PC.vector(isample(0:10), itype(UInt8)), true)
     res = check(s) do s2
         length(s2) < 5
     end
@@ -52,7 +55,7 @@ function interleaveFilterInvariant()
 end
 
 function interleaveMapInvariant()
-    s = map(l -> push!(l, 0x0), PropCheck.vector(isample(0:2), itype(UInt8)))
+    s = map(l -> push!(l, 0x0), PC.vector(isample(0:2), itype(UInt8)))
     res = check(s) do s2
         !isempty(s2) && last(s2) != 0x0
     end
@@ -60,7 +63,7 @@ function interleaveMapInvariant()
 end
 
 function initialVectorLengthIsBoundedByRange()
-    i = PropCheck.vector(isample(5:10), itype(Int8))
+    i = PC.vector(isample(5:10), itype(Int8))
     @test check(i) do v
         5 <= length(v) <= 10
     end
@@ -102,13 +105,13 @@ function throwingProperty(x)
 end
 
 function floatTear(T, x)
-    x === PropCheck.assemble(T, PropCheck.tear(x)...)
+    x === PC.assemble(T, PC.tear(x)...)
 end
 
 function assembleInf(T)
     check(itype(Bool)) do b
-        inttype = PropCheck.uint(T)
-        f = PropCheck.assemble(T, inttype(b), typemax(inttype), zero(inttype))
+        inttype = PC.uint(T)
+        f = PC.assemble(T, inttype(b), typemax(inttype), zero(inttype))
         b == signbit(f)
     end
 end
@@ -117,24 +120,24 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
 @time @testset "All Tests" begin
     @testset "Interfaces" begin
-        RI.check_implementations(PropCheck.AbstractIntegrated)
-        extent_types = filter!(!=(PropCheck.IntegratedVal), RI.nonabstract_subtypes(PropCheck.ExtentIntegrated))
-        RI.check_implementations(PropCheck.ExtentIntegrated, extent_types)
+        RI.check_implementations(PC.AbstractIntegrated)
+        extent_types = filter!(!=(PC.IntegratedVal), RI.nonabstract_subtypes(PC.ExtentIntegrated))
+        RI.check_implementations(PC.ExtentIntegrated, extent_types)
         # only this type implements extent
-        num_ival = PropCheck.IntegratedVal{PropCheck.Tree{Number}}
-        @test RI.check_interface_implemented(PropCheck.ExtentIntegrated, num_ival)
+        num_ival = PC.IntegratedVal{PC.Tree{Number}}
+        @test RI.check_interface_implemented(PC.ExtentIntegrated, num_ival)
     end
     @testset "Tear $T & reassemble, floating point generators" for T in getSubtypes(Base.IEEEFloat)
         @testset "assembleInf" begin
             assembleInf(T)
         end
         @test check(x -> floatTear(T, x), itype(T))
-        @test check(isinf, PropCheck.ifloatinf(T); transform=bitstring)
-        @test check(isnan, PropCheck.ifloatnan(T); transform=bitstring)
-        @test check(PropCheck.ifloatinfnan(T); transform=bitstring) do v
+        @test check(isinf, PC.ifloatinf(T); transform=bitstring)
+        @test check(isnan, PC.ifloatnan(T); transform=bitstring)
+        @test check(PC.ifloatinfnan(T); transform=bitstring) do v
             isnan(v) | isinf(v)
         end
-        @test check(PropCheck.ifloat(T)) do v
+        @test check(PC.ifloat(T)) do v
             !(isnan(v) | isinf(v))
         end
         @testset "Special numbers: $x)" for x in (Inf, -Inf, NaN, -0.0, 0.0)
@@ -143,8 +146,8 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     end
     @testset "Integer generators" begin
         @testset for T in (getSubtypes(Base.BitSigned))
-            @test check(>=(zero(T)), PropCheck.iposint(T))
-            @test check(<(zero(T)), PropCheck.inegint(T))
+            @test check(>=(zero(T)), PC.iposint(T))
+            @test check(<(zero(T)), PC.inegint(T))
         end
     end
     @testset "numsToZero" begin
@@ -171,7 +174,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end
     end
     @testset "random vectors are sorted" begin
-        @test check(issorted, PropCheck.vector(isample(0:10), itype(UInt8))) == [0x1, 0x0]
+        @test check(issorted, PC.vector(isample(0:10), itype(UInt8))) == [0x1, 0x0]
     end
     @testset "all even numbers are less than 5" begin
         @test check(<(5), filter(iseven, itype(UInt8))) == 0x6
@@ -209,15 +212,15 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     if VERSION >= v"1.9"
         # this sadly doesn't infer before then, so we can't really test it :/
         @testset "type unstable constructors" begin
-            grade = map(Base.splat(Pair), PropCheck.interleave(itype(String), isample(0:100)))
+            grade = map(Base.splat(Pair), PC.interleave(itype(String), isample(0:100)))
             # it's type unstable because the empty dispatch returns `Dict{Any,Any}`!
             # I'd love to propagate the lowerbound of `1` to make this type stable, but that is hard.
             # maybe that needs dependent types?
-            gradegen = map(Base.splat(Dict), PropCheck.tuple(isample(0:10), grade))
-            @test eltype(gradegen) == Union{PropCheck.Tree{Dict{Any, Any}}, PropCheck.Tree{Dict{String, Int64}}}
+            gradegen = map(Base.splat(Dict), PC.tuple(isample(0:10), grade))
+            @test eltype(gradegen) == Union{PC.Tree{Dict{Any, Any}}, PC.Tree{Dict{String, Int64}}}
         end
     end
-    @testset "$f preserves invariants" for f in (PropCheck.str, PropCheck.vector)
+    @testset "$f preserves invariants" for f in (PC.str, PC.vector)
         # 3 hex characters is plenty - this is already 3^11 == 177147 possible strings
         # of couse, it would be better to generate some variations, but.. CI time is not fixing
         # & writing code time ¯\_(ツ)_/¯ Plus, I like to be able to test my code locally in a reasonable time
@@ -234,11 +237,11 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         @test res
     end
     @testset "IntegratedUnique" begin
-        colgen = PropCheck.vector(isample(0:10), itype(Int8))
+        colgen = PC.vector(isample(0:10), itype(Int8))
         # Taking as many elements as the source collection has
         # produces the source collection again
         @test check(colgen) do col
-            iu = PropCheck.IntegratedUnique(copy(col), shrink)
+            iu = PC.IntegratedUnique(copy(col), shrink)
             sort!(col)
             iucol = sort!(map(root, Iterators.take(iu, length(col))))
             firstiteration =  all(Base.splat(==), zip(col, iucol))
@@ -259,16 +262,16 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     end
     @testset "IntegratedVal" begin
         valgen = itype(Int8)
-        shrinkgen = iunique([shrink, PropCheck.noshrink], PropCheck.noshrink)
+        shrinkgen = iunique([shrink, PC.noshrink], PC.noshrink)
         constgen = interleave(valgen, shrinkgen)
         # The root is always the given element
         @test check(constgen) do (v, s)
-            genv = generate(PropCheck.ival(v, s))
+            genv = generate(PC.ival(v, s))
             v == root(genv)
         end
         # The shrunk values of the root are consistent with the given shrinking function
         @test check(constgen) do (v, s)
-            genv = generate(PropCheck.ival(v, s))
+            genv = generate(PC.ival(v, s))
             shrunks = sort!(s(v))
             gensubs = sort!(map(root, subtrees(genv)))
             length(shrunks) == length(gensubs) && all(Base.splat(==), zip(shrunks, gensubs))
@@ -279,20 +282,20 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         valgen = itype(Int8)
         # The value will only be generated exactly once
         @test check(valgen) do v
-            gen = PropCheck.IntegratedOnce(v)
+            gen = PC.IntegratedOnce(v)
             v == root(generate(gen)) && nothing == generate(gen)
         end
     end
     @testset "IntegratedFiniteIterator" begin
         function integratedFinitePreservesLength(itr)
             # generation preserves the length
-            ifi = PropCheck.IntegratedFiniteIterator(itr)
+            ifi = PC.IntegratedFiniteIterator(itr)
             length(itr) == length(ifi)
         end
 
         function integratedFinitePreservesOrder(itr)
             # generation preserves the original iteration order
-            ifi = PropCheck.IntegratedFiniteIterator(itr)
+            ifi = PC.IntegratedFiniteIterator(itr)
             # `iterate` calls `generate`
             all(zip(itr, ifi)) do (a,b)
                 a == root(b)
@@ -301,7 +304,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
         function integratedFiniteGetsExhausted(itr)
             # After `length(itr)` calls to `generate`, the shrinker is exhausted
-            ifi = PropCheck.IntegratedFiniteIterator(itr)
+            ifi = PC.IntegratedFiniteIterator(itr)
             for _ in 1:length(itr)
                 generate(ifi)
             end
@@ -310,8 +313,8 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
 
         lengen = isample(0:10)
         elgen = itype(Int8)
-        vecgen = PropCheck.vector(lengen, elgen)
-        tupgen = PropCheck.tuple(lengen, elgen)
+        vecgen = PC.vector(lengen, elgen)
+        tupgen = PC.tuple(lengen, elgen)
 
         @testset for prop in (integratedFinitePreservesLength,
                               integratedFinitePreservesOrder,
@@ -323,7 +326,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     end
     @testset "IntegratedLengthBounded" begin
         function givenLengthCorrectForInfinite(len)
-            gen = PropCheck.IntegratedLengthBounded(itype(Int8), len)
+            gen = PC.IntegratedLengthBounded(itype(Int8), len)
             all(zip(gen, 1:(len+1))) do (genval, counter)
                 if counter > len
                     genval isa Nothing
@@ -336,8 +339,8 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         function givenLengthUpperboundForFinite(len)
             targetLen = div(len, 2) + 1
             sourceels = rand(Int8, targetLen)
-            elgen = PropCheck.IntegratedFiniteIterator(sourceels)
-            gen = PropCheck.IntegratedLengthBounded(elgen, len)
+            elgen = PC.IntegratedFiniteIterator(sourceels)
+            gen = PC.IntegratedLengthBounded(elgen, len)
             all(zip(gen, 1:max(targetLen, len))) do (genval, counter)
                 if counter > min(targetLen, len)
                     genval isa Nothing
@@ -351,9 +354,9 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         @test check(givenLengthUpperboundForFinite, isample(0:20))
     end
     gens = [
-        PropCheck.IntegratedOnce(6),
-        PropCheck.IntegratedFiniteIterator(1:11),
-        PropCheck.IntegratedLengthBounded(PropCheck.iposint(Int8), 5)
+        PC.IntegratedOnce(6),
+        PC.IntegratedFiniteIterator(1:11),
+        PC.IntegratedLengthBounded(PC.iposint(Int8), 5)
     ]
     @testset for gen in gens
         @testset "`filter` FiniteIntegrated" begin
@@ -370,7 +373,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     end
     @testset "`interleave` FiniteIntegrated" begin
         @testset "IntegratedOnce" begin
-            gen = PropCheck.IntegratedOnce(6)
+            gen = PC.IntegratedOnce(6)
             woven = interleave(gen, deepcopy(gen))
             @test begin
                 res = generate(woven)
@@ -380,7 +383,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end
         @testset "IntegratedFiniteIterator" begin
             src = 1:11
-            gen = PropCheck.IntegratedFiniteIterator(src)
+            gen = PC.IntegratedFiniteIterator(src)
             woven = interleave(gen, deepcopy(gen))
             for i in src
                 res = generate(woven)
@@ -389,9 +392,9 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
             @test generate(woven) isa Nothing
         end
         @testset "IntegratedLengthBounded" begin
-            bound = PropCheck.iposint(Int8)
+            bound = PC.iposint(Int8)
             @test check(bound) do v
-                gen = PropCheck.IntegratedLengthBounded(itype(Int8), v)
+                gen = PC.IntegratedLengthBounded(itype(Int8), v)
                 woven = interleave(gen, deepcopy(gen))
                 count(woven) do t
                     t isa Tree{Tuple{Int8, Int8}}
@@ -400,18 +403,57 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end
     end
     @testset "`check` on finite integrated reaches second generated value" begin
-        gen = PropCheck.IntegratedFiniteIterator(1:2)
+        gen = PC.IntegratedFiniteIterator(1:2)
         @test check(gen) do v
             v != 2
         end == 2
     end
     end
+    @testset "IntegratedBoundedRec" begin
+        @testset "Regular repeated generation" begin
+            irb = PC.IntegratedBoundedRec(10, itype(Int8))
+            irbvec = PC.vector(isample(10:20), irb)
+            @test check(irbvec) do v
+                length(v) >= 10 && all(v) do e
+                    e isa Int8
+                end
+            end
+        end
+        @testset "Mutually recursive generation" begin
+            # This is _incredibly_ awkward to test!
+            foocount_correct(s) = 2*count(==('f'), s) == count(==('o'), s)
+            @testset "with Choice" begin
+                irb = PC.IntegratedBoundedRec{String}(10);
+                a = map(join, interleave(ival("foo", PC.noshrink), irb))
+                b = PC.IntegratedChoice(a, a, a, a, a, ival("bar", PC.noshrink))
+                PC.bind!(irb, b)
+                @test check(foocount_correct, b)
+            end
+            @testset "map" begin
+                irc = PC.IntegratedBoundedRec{String}(10);
+                rec = map(join, interleave(iconst("foo"), irc))
+                c = map(interleave(rec, iconst("bar"))) do t
+                    t = join(t)
+                    t[randperm(length(t))]::String
+                end
+                PC.bind!(irc, c)
+                @test_broken check(foocount_correct, c)
+            end
+            @testset "interleave" begin
+                ird = PC.IntegratedBoundedRec{Any}(5);
+                red = PC.IntegratedChoice(ird, iconst("foo"))
+                d = interleave(red, iconst("bar"))
+                PC.bind!(ird, d)
+                @test check(foocount_correct, d)
+            end
+        end
+    end
     @testset "Inference" begin
         @testset for gen in (
-                itype(Int8), PropCheck.iposint(Int8), PropCheck.inegint(Int8),
-                PropCheck.ifloat(Float16), PropCheck.ifloatinf(Float16), PropCheck.ifloatnan(Float16),
+                itype(Int8), PC.iposint(Int8), PC.inegint(Int8),
+                PC.ifloat(Float16), PC.ifloatinf(Float16), PC.ifloatnan(Float16),
                 )
-            @test @inferred(generate(gen)) isa PropCheck.Tree
+            @test @inferred(generate(gen)) isa PC.Tree
         end
     end
 end
