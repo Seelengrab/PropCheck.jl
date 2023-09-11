@@ -36,7 +36,11 @@ See also [`root`](@ref).
 subtrees(t::Tree) = t.subtrees
 subtrees(::Nothing) = nothing
 
-Base.show(io::IO, t::Tree) = print(io, "Tree(", t.root, ')')
+function Base.show(io::IO, t::Tree)
+    print(io, "Tree(")
+    show(io, t.root)
+    print(io, ')')
+end
 
 Base.eltype(::Type{<:Tree{T}}) where {T} = T
 
