@@ -49,20 +49,20 @@ generate(rng, ::Type{String}) = randstring(rng, typemin(Char):"\xf7\xbf\xbf\xbf"
 #######################
 
 """
-    iposint(::Type{T}) where T <: Union{Int8, Int16, Int32, Int64, Int128}
+    iposint(::Type{T}[, shrink=shrink]) where T <: Union{Int8, Int16, Int32, Int64, Int128}
 
 An integrated shrinker producing positive values of type `T`.
 """
-iposint(::Type{T}) where T <:Base.BitSigned = map(itype(T)) do v
+iposint(::Type{T}, shrink=shrink) where T <:Base.BitSigned = map(itype(T, shrink)) do v
     v & typemax(T)
 end
 
 """
-    inegint(::Type{T}) where T <: Union{Int8, Int16, Int32, Int64, Int128}
+    inegint(::Type{T}[, shrink=shrink]) where T <: Union{Int8, Int16, Int32, Int64, Int128}
 
 An integrated shrinker producing negative values of type `T`.
 """
-inegint(::Type{T}) where T <:Base.BitSigned = map(itype(T)) do v
+inegint(::Type{T}, shrink=shrink) where T <:Base.BitSigned = map(itype(T, shrink)) do v
     v | ~typemax(T)
 end
 
