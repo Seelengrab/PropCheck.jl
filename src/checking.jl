@@ -62,6 +62,10 @@ function minimize!(log, f, t::Tree{T}, initEx, predicate) where {T}
     log
 end
 
+struct CheckingError
+    msg::String
+end
+
 function findCounterexample(f, trees::Vector; show_initial=true)
     function _f(tree)
         try
@@ -72,6 +76,7 @@ function findCounterexample(f, trees::Vector; show_initial=true)
         end
     end
     filter!(!isnothing, trees)
+    isempty(trees) && throw(CheckingError("No values were produced during generation."))
     checkedTrees = map(_f, trees)
     filter!(first, checkedTrees)
     isempty(checkedTrees) && return nothing
