@@ -145,7 +145,7 @@ generate(rng::AbstractRNG, i::IntegratedRange) = generate(rng, i.gen)
 extent(ir::IntegratedRange) = (first(ir.bounds), last(ir.bounds))
 
 function Base.show(io::IO, it::IntegratedRange{T, R}) where {T,R}
-    print(io, "IntegratedRange(", it.bounds, ", ", it.gen, ", ", it.shrink, ")")
+    print(io, "IntegratedRange(", it.bounds, ", ", it.gen, ")")
 end
 
 """
@@ -499,6 +499,10 @@ and setting the second one as `bind!(::IntegratedBoundedRec, ::AbstractIntegrate
     Selfrecursion could also be done through this, but is likely to be more efficient when implemented
     explicitly (or bounded through other means), due to the need for type instability on self recursion
     as a result of how this type is implemented.
+
+!!! warn "Experimental"
+    This integrated shrinker is very experimental, and some uses still don't work correctly. If possible,
+    try to avoid the kind of mutually recursive generation this would enable.
 """
 mutable struct IntegratedBoundedRec{T} <: AbstractIntegrated{T}
     @constfield maxrec::Int
