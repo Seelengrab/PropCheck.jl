@@ -431,6 +431,112 @@ function generate(rng::AbstractRNG, ilb::IntegratedLengthBounded)
     generate(rng, ilb.integrated)
 end
 
+function Base.show(io::IO, ilb::IntegratedLengthBounded)
+    print(io, "IntegratedLengthBounded(", ilb.integrated, ", ", ilb.bound, ")")
+end
+
+"""
+    IntegratedChoice(is::AbstractIntegrated...)
+    IntegratedChoice{T} <: AbstractIntegrated{T}
+
+An integrated shrinker for generating a value from one of any number of given `AbstractIntegrated`.
+The choice is taking uniformly random. No consideration for repeats is taken.
+
+Is `<: AbstractIntegrated{T}`, but can behave (except for dispatch) like a `FiniteIntegrated`, if all
+given `AbstractIntegrated` are `FiniteIntegrated`.
+"""
+struct IntegratedChoice{T, Is, Finite} <: AbstractIntegrated{T}
+    gens::Is
+    choicelist::Vector{Int}
+    function IntegratedChoice(is::AbstractIntegrated...)
+        start = is[begin:end-1]
+        Finite = all(start) do i
+            i isa FiniteIntegrated
+        end
+        T = Union{eltype.(is)...}
+        Is = Tuple{typeof.(is)...}
+        new{T, Is, Finite}(is, collect(eachindex(is)))
+    end
+end
+freeze(ci::IntegratedChoice) = deepcopy(ci)
+Base.IteratorSize(ic::IntegratedChoice{T, Is, true}) where {T,Is}  = Base.HasLength()
+Base.IteratorSize(ic::IntegratedChoice{T, Is, false}) where {T,Is} = Base.IsInfinite()
+Base.length(ic::IntegratedChoice{T, Is, true}) where {T, Is} = minimum(length, ic.gens)
+Base.isdone(ic::IntegratedChoice{T, Is, true}) where {T, Is} = all(isdone, ic.gens)
+Base.isdone(ic::IntegratedChoice{T, Is, false}) where {T, Is} = false
+
+function generate(rng::AbstractRNG, ic::IntegratedChoice)
+    while !Base.isdone(ic)
+        idx = rand(rng, eachindex(ic.choicelist))
+        gen = ic.gens[ic.choicelist[idx]]
+        res = generate(rng, gen)
+        if res === nothing
+            # this generator has been exhausted, remove it so we don't try it in the future
+            deleteat!(ic.choicelist, idx)
+            continue
+        else
+            return res
+        end
+    end
+    return nothing
+end
+
+function Base.show(io::IO, ilb::IntegratedChoice)
+    print(io, "IntegratedChoice(", ilb.gens, ")")
+end
+
+"""
+    IntegratedBoundedRec{T}(maxrec)
+    IntegratedBoundedRec(maxrec, ai::AbstractIntegrated)
+    IntegratedBoundedRec{T} <: AbstractIntegrated{T}
+
+An `AbstractIntegrated` for allowing mutual recursion between two `AbstractIntegrated`.
+Used by inserting as a shim into one `AbstractIntegrated`, creating a second `AbstractIntegrated`
+and setting the second one as `bind!(::IntegratedBoundedRec, ::AbstractIntegrated)` of the shim afterwards.
+
+!!! note "Mutual recursion"
+    This type is for allowing mutual recursion between two (or more) different integrated shrinkers.
+    Selfrecursion could also be done through this, but is likely to be more efficient when implemented
+    explicitly (or bounded through other means), due to the need for type instability on self recursion
+    as a result of how this type is implemented.
+"""
+mutable struct IntegratedBoundedRec{T} <: AbstractIntegrated{T}
+    @constfield maxrec::Int
+    currec::Int
+    ai::AbstractIntegrated{<:T}
+    IntegratedBoundedRec{T}(maxrec) where T = new{Tree{<:T}}(maxrec, 0)
+    IntegratedBoundedRec(maxrec, ai::G) where {T, G<:AbstractIntegrated{T}} = new{T}(maxrec, 0, ai)
+end
+
+"""
+    bind!(ibr::IntegratedBoundedRec{T}, ai::AbstractIntegrated{T})
+
+Binds the given `AbstractIntegrated` to `ibr`, such that it will be called for generation when
+`generate(ibr)` is called.
+
+This needs to be called to allow mutual recursion during generation.
+"""
+bind!(ibr::IntegratedBoundedRec{T}, ai::AbstractIntegrated) where T = ibr.ai = ai
+
+function generate(rng::AbstractRNG, ibr::IntegratedBoundedRec)
+    ibr.currec >= ibr.maxrec && return nothing
+    ibr.currec += 1
+    res = generate(rng, ibr.ai)
+    ibr.currec -= 1
+    res
+end
+freeze(ibr::IntegratedBoundedRec) = ibr
+
+function Base.show(io::IO, ibr::IntegratedBoundedRec)
+    print(io, "IntegratedBoundedRec(", ibr.maxrec, ", ")
+    if isdefined(ibr, :ai)
+        print(io, ibr.ai)
+    else
+        print(io, "#undef")
+    end
+    print(io, ")")
+end
+
 ################################################
 # utility for working with integrated generators
 ################################################
