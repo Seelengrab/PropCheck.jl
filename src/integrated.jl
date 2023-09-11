@@ -146,19 +146,18 @@ extent(ir::IntegratedRange) = (first(ir.bounds), last(ir.bounds))
 An integrated shrinker describing a constant. The shrinker will always produce that value, which
 doesn't shrink.
 """
-struct IntegratedConst{T,R,G} <: ExtentIntegrated{T}
+struct IntegratedConst{T,R} <: ExtentIntegrated{T}
     bounds::R
-    gen::G
     function IntegratedConst(c::T) where T
-        gen = Integrated(Tree(c))
-        new{Tree{T}, T, typeof(gen)}(c, gen)
+        new{Tree{T}, T}(c)
     end
 end
-generate(rng::AbstractRNG, i::IntegratedConst) = generate(rng, i.gen)
+freeze(ic::IntegratedConst) = ic
+generate(_::AbstractRNG, i::IntegratedConst) = Tree(i.bounds)
 extent(ir::IntegratedConst) = (ir.bounds, ir.bounds)
 
 """
-    IntegratedUnique(vec::Vector{ElT}, shrink::S) where {ElT,S}
+    IntegratedUnique(vec::Vector{ElT}[, shrink=shrink::S]) where {ElT,S}
     IntegratedUnique{T,ElT,S} <: InfiniteIntegrated{T}
 
 An integrated shrinker, taking a vector `vec`. The shrinker will produce all unique values of `vec`
@@ -170,7 +169,7 @@ mutable struct IntegratedUnique{T,ElT,S} <: InfiniteIntegrated{T}
     cache::Vector{ElT}
     @constfield shrink::S
 
-    function IntegratedUnique(vec::Vector{T}, shrink::S) where {T,S}
+    function IntegratedUnique(vec::Vector{T}, shrink::S=shrink) where {T,S}
         treeType = integratorType(T)
         els = shuffle(vec)
         cache = sizehint!(similar(els, 0), length(els))
@@ -189,7 +188,12 @@ function generate(rng::AbstractRNG, i::IntegratedUnique)
     unfold(Shuffle ∘ i.shrink, el)
 end
 
-freeze(i::IntegratedUnique{T}) where {T} = Generator{T}(rng -> generate(rng, i))
+function freeze(i::IntegratedUnique{T,ElT}) where {T,ElT}
+    niu = IntegratedUnique(ElT[], i.shrink)
+    niu.els = copy(i.els)
+    niu.cache = copy(i.cache)
+    niu
+end
 
 """
     IntegratedVal(val::V, shrink::S) where {V,S}
@@ -210,7 +214,7 @@ to define `extent(::IntegratedVal{Tree{T}})`
 struct IntegratedVal{T,V,S} <: ExtentIntegrated{T}
     val::V
     shrink::S
-    function IntegratedVal(v::V, s::S) where {V,S}
+    function IntegratedVal(v::V, s::S=shrink) where {V,S}
         new{Tree{V},V,S}(v, s)
     end
 end
