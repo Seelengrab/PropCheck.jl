@@ -93,7 +93,7 @@ function Integrated(el::Tree{T}) where T
 end
 
 function integratorType(u::Union)
-    types = getSubtypes(u)
+    types = getsubtypes(u)
     Union{(Tree{T} for T in types)...}
 end
 integratorType(::Type{T}) where T = Tree{T}
@@ -551,7 +551,7 @@ dependent(g::Generator{T,F}) where {T,F} = Integrated{T,F}(g.gen)
 Maps `f` lazily over all elements in `i`, producing an `AbstractIntegrated` generating the mapped values.
 """
 function PropCheck.map(f::F, gen::AbstractIntegrated{T}) where {T, F}
-    rettypes = Base.promote_op(f, unpackTreeUnion(T)...)
+    rettypes = Base.promote_op(f, unpacktreeunion(T)...)
     mapType = integratorType(rettypes)
     function genF(rng)
         val = generate(rng, freeze(gen))
@@ -561,10 +561,10 @@ function PropCheck.map(f::F, gen::AbstractIntegrated{T}) where {T, F}
     dependent(Generator{mapType}(genF))
 end
 
-unpackTreeUnion(::Type{Tree{T}}) where T = (T,)
-function unpackTreeUnion(::Type{T}) where T
+unpacktreeunion(::Type{Tree{T}}) where T = (T,)
+function unpacktreeunion(::Type{T}) where T
     !(T isa Union) && return (T,)
-    (unpackTreeUnion(T.a)..., unpackTreeUnion(T.b)...)
+    (unpacktreeunion(T.a)..., unpacktreeunion(T.b)...)
 end
 
 # we are Applicative with this

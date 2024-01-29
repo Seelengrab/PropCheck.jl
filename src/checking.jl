@@ -17,7 +17,7 @@ function check(p, i::AbstractIntegrated{T}, rng::AbstractRNG=Random.default_rng(
                   ntests::Int=numTests[], show_initial=true, transform=identity) where T
     gen = freeze(i)
     genAs = [ generate(rng, gen) for _ in 1:ntests ]
-    res = findCounterexample(p, genAs; show_initial)
+    res = findcounterexample(p, genAs; show_initial)
     res === nothing && return true
     @debug res
     entry = last(res)
@@ -66,7 +66,7 @@ struct CheckingError
     msg::String
 end
 
-function findCounterexample(f, trees::Vector; show_initial=true)
+function findcounterexample(f, trees::Vector; show_initial=true)
     function _f(tree)
         try
             ((!f ∘ root)(tree), tree, nothing)

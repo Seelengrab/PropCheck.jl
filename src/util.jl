@@ -14,8 +14,8 @@ macro constfield(ex::Expr)
     end
 end
 
-function getSubtypes(T=Any)::Vector{DataType}
-    T isa Union && return getSubUnions!(DataType[], T)
+function getsubtypes(T=Any)::Vector{DataType}
+    T isa Union && return getsubunions!(DataType[], T)
     subs = subtypes(T)
     ret = filter(isconcretetype, subs)
     filter!(isabstracttype, subs)
@@ -31,11 +31,11 @@ function getSubtypes(T=Any)::Vector{DataType}
     ret
 end
 
-function getSubUnions!(cache, T)
+function getsubunions!(cache, T)
     if !(T isa Union)
         push!(cache, T)
     else
         push!(cache, T.a)
-        getSubUnions!(cache, T.b)
+        getsubunions!(cache, T.b)
     end
 end

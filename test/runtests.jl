@@ -1,7 +1,7 @@
 using Test
 
 using PropCheck
-using PropCheck: getSubtypes, numTests, Tree
+using PropCheck: getsubtypes, numTests, Tree
 const PC = PropCheck
 
 using RequiredInterfaces: RequiredInterfaces
@@ -116,7 +116,7 @@ function assembleInf(T)
     end
 end
 
-const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
+const numTypes = union(getsubtypes(Integer), getsubtypes(AbstractFloat))
 
 @time @testset "All Tests" begin
     @testset "Interfaces" begin
@@ -127,7 +127,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         num_ival = PC.IntegratedVal{PC.Tree{Number}}
         @test RI.check_interface_implemented(PC.ExtentIntegrated, num_ival)
     end
-    @testset "Tear $T & reassemble, floating point generators" for T in getSubtypes(Base.IEEEFloat)
+    @testset "Tear $T & reassemble, floating point generators" for T in getsubtypes(Base.IEEEFloat)
         @testset "assembleInf" begin
             assembleInf(T)
         end
@@ -145,7 +145,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         end
     end
     @testset "Integer generators" begin
-        @testset for T in (getSubtypes(Base.BitSigned))
+        @testset for T in (getsubtypes(Base.BitSigned))
             @test check(>=(zero(T)), PC.iposint(T))
             @test check(<(zero(T)), PC.inegint(T))
         end
@@ -283,7 +283,7 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
         # The value will only be generated exactly once
         @test check(valgen) do v
             gen = PC.IntegratedOnce(v)
-            v == root(generate(gen)) && nothing == generate(gen)
+            v == root(generate(gen)) && isnothing(generate(gen))
         end
     end
     @testset "IntegratedFiniteIterator" begin

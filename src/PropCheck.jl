@@ -95,13 +95,13 @@ function isample(x, shrink=shrink)
 end
 
 """
-    isample(x::AbstractRange[, shrink=shrinkTowards(first(x))]) -> AbstractIntegrated
+    isample(x::AbstractRange[, shrink=shrinktowards(first(x))]) -> AbstractIntegrated
 
 A convenience constructor for creating an integrated shrinker.
 
 Trees created by this shrink towards the first element of the range by default.
 """
-function isample(x::AbstractRange, shrink=shrinkTowards(first(x)))
+function isample(x::AbstractRange, shrink=shrinktowards(first(x)))
     gen = Generator{eltype(x)}(rng -> rand(rng, x))
     IntegratedRange(x, gen, shrink)
 end
