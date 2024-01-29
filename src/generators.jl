@@ -9,7 +9,7 @@ Generator{T}(g) where T = Generator{T,typeof(g)}(g)
 Generator(el::T) where T = Generator{T}((rng)->generate(rng, el))
 Generator(::Type{T}) where T = Generator{T}((rng)->generate(rng, T))
 function Generator(x::Union)
-    types = getSubtypes(x)
+    types = getsubtypes(x)
     Generator{x}() do rng
         generate(rng, rand(rng, types))::x
     end

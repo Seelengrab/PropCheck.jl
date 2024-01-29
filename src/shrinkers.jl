@@ -259,19 +259,19 @@ function shrink(r::T) where T <: AbstractRange
 end
 
 #######
-# shrinkTowards
+# shrinktowards
 ######
 
 """
-    shrinkTowards(to::T) -> (x::T -> T[...])
+    shrinktowards(to::T) -> (x::T -> T[...])
 
 Constructs a shrinker function that shrinks given values towards `to`.
 """
-function shrinkTowards end
+function shrinktowards end
 
 half(x::Real) = div(x, 0x2)
 half(x::Char) = Char(half(Int32(x)))
-function shrinkTowards(to::T) where T <: Union{Char, Real}
+function shrinktowards(to::T) where T <: Union{Char, Real}
     function (x::T)
         ret = T[]
         to == x && return ret
@@ -286,7 +286,7 @@ function shrinkTowards(to::T) where T <: Union{Char, Real}
     end
 end
 
-function shrinkTowards(to::T) where T <: AbstractFloat
+function shrinktowards(to::T) where T <: AbstractFloat
     function (x::T)
         ret = T[]
         to == x && return ret
@@ -303,7 +303,7 @@ function shrinkTowards(to::T) where T <: AbstractFloat
     end
 end
 
-shrinkTowards(to::Bool) = function (x::Bool)
+shrinktowards(to::Bool) = function (x::Bool)
     to == x && return Bool[]
     !to && x && return [false]
     to && !x && return Bool[]
