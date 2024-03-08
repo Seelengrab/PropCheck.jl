@@ -7,7 +7,17 @@
 [![codecov](https://codecov.io/github/Seelengrab/PropCheck.jl/branch/main/graph/badge.svg?token=8IJ4R0KB82)](https://codecov.io/github/Seelengrab/PropCheck.jl)
 
 A simple, thin package for property based testing. 
-For a look at what's already planned in the future, take a look at the [`feature`](https://github.com/Seelengrab/PropCheck.jl/issues?q=is%3Aissue+is%3Aopen+label%3Afeature) label in the issues.
+
+## Maintenance only
+
+PropCheck.jl is in _maintenance mode_ which means that no new features will be added.
+Bugs that compromise the intended behavior that pop up will continue to be fixed (if sufficiently feasible).
+For future development of property based testing, as well as better performance,
+consider using [Supposition.jl](https://github.com/Seelengrab/Supposition.jl) instead.
+
+This package is now intended to serve as an example for how a Haskell project deeply
+relying on lazy evaluation and type classes could be ported to Julia (thought it may
+not necessarily be a _good_ example for that ;) ).
 
 ## Installation
 
