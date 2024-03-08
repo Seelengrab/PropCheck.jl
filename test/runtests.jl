@@ -153,8 +153,9 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     @testset "numsToZero" begin
         @testset "$T" for T in numTypes
             if VERSION >= v"1.7"
-                @test numsToZero(T) broken=(T == BigInt || T == BigFloat)
+                @test numsToZero(T) broken=(T == BigInt || T == BigFloat || T == Core.BFloat16)
             else
+                # we don't need to add Core.BFloat16 here, since it was only added in 1.11
                 if T != BigInt && T != BigFloat
                     @test numsToZero(T)
                 end
@@ -424,7 +425,8 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
             foocount_correct(s) = 2*count(==('f'), s) == count(==('o'), s)
             @testset "with Choice" begin
                 irb = PC.IntegratedBoundedRec{String}(10);
-                a = map(join, interleave(ival("foo", PC.noshrink), irb))
+                # this needs a type assertion because `irb` is not a `const`...
+                a = map(col -> join(col)::String, interleave(ival("foo", PC.noshrink), irb))
                 b = PC.IntegratedChoice(a, a, a, a, a, ival("bar", PC.noshrink))
                 PC.bind!(irb, b)
                 @test check(foocount_correct, b)
