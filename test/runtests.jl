@@ -153,7 +153,8 @@ const numTypes = union(getSubtypes(Integer), getSubtypes(AbstractFloat))
     @testset "numsToZero" begin
         @testset "$T" for T in numTypes
             if VERSION >= v"1.7"
-                @test numsToZero(T) broken=(T == BigInt || T == BigFloat || T == Core.BFloat16)
+                v11 = VERSION.major == 1 && VERSION.minor >= 11
+                @test numsToZero(T) broken=(T == BigInt || T == BigFloat || (v11 && T == Core.BFloat16))
             else
                 # we don't need to add Core.BFloat16 here, since it was only added in 1.11
                 if T != BigInt && T != BigFloat
